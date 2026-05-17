@@ -1,6 +1,6 @@
 import { Group, Image, Layer, Rect, Stage } from "react-konva";
 import type Konva from "konva";
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { CollageControls, type CollageInteractionMode } from "./Toolbar";
 import { PhotoTray } from "./PhotoTray";
 import { useElementSize, useLoadedImage } from "../hooks/useElementSize";
@@ -121,6 +121,7 @@ export function CollageEditor({ onImportFiles }: CollageEditorProps) {
   const [isExporting, setIsExporting] = useState(false);
   const [interactionMode, setInteractionMode] = useState<CollageInteractionMode>("photo");
   const pinchRef = useRef<{ distance: number; cellId: string } | undefined>(undefined);
+  const activePointersRef = useRef(new Map<number, Point>());
 
   const stageRect = useMemo(
     () => ({ x: 0, y: 0, width: Math.max(size.width, 1), height: Math.max(size.height, 1) }),
@@ -190,6 +191,65 @@ export function CollageEditor({ onImportFiles }: CollageEditorProps) {
     updatePlacement(cellId, zoomPlacement(placement, photo, cell.rect, scale));
   };
 
+  const updatePinchZoom = () => {
+    if (isAdjustMode || !selectedCellId || activePointersRef.current.size !== 2) {
+      pinchRef.current = undefined;
+      return;
+    }
+
+    const placement = placements[selectedCellId];
+    if (!placement) {
+      pinchRef.current = undefined;
+      return;
+    }
+
+    const [a, b] = Array.from(activePointersRef.current.values());
+    if (!a || !b) {
+      return;
+    }
+
+    const distance = Math.hypot(a.x - b.x, a.y - b.y);
+    const current = pinchRef.current;
+    if (!current || current.cellId !== selectedCellId) {
+      pinchRef.current = { distance, cellId: selectedCellId };
+      return;
+    }
+
+    setSelectedCellZoom(selectedCellId, placement.scale + (distance - current.distance) / 180);
+    pinchRef.current = { distance, cellId: selectedCellId };
+  };
+
+  const onHostPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.pointerType !== "touch") {
+      return;
+    }
+
+    event.currentTarget.setPointerCapture(event.pointerId);
+    activePointersRef.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    updatePinchZoom();
+  };
+
+  const onHostPointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.pointerType !== "touch" || !activePointersRef.current.has(event.pointerId)) {
+      return;
+    }
+
+    activePointersRef.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    if (activePointersRef.current.size === 2) {
+      event.preventDefault();
+    }
+    updatePinchZoom();
+  };
+
+  const onHostPointerEnd = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.pointerType !== "touch") {
+      return;
+    }
+
+    activePointersRef.current.delete(event.pointerId);
+    pinchRef.current = undefined;
+  };
+
   return (
     <div className="workspace">
       <section className="canvas-shell">
@@ -197,6 +257,10 @@ export function CollageEditor({ onImportFiles }: CollageEditorProps) {
           ref={ref}
           className="stage-host"
           data-testid="collage-stage"
+          onPointerDown={onHostPointerDown}
+          onPointerMove={onHostPointerMove}
+          onPointerCancel={onHostPointerEnd}
+          onPointerUp={onHostPointerEnd}
           onDragOver={(event) => {
             if (event.dataTransfer.types.includes("application/x-photo-id")) {
               event.preventDefault();
@@ -223,36 +287,6 @@ export function CollageEditor({ onImportFiles }: CollageEditorProps) {
               }
 
               selectCell(hitTestLeaf(point, leafRects));
-            }}
-            onTouchMove={(event) => {
-              if (isAdjustMode || event.evt.touches.length !== 2 || !selectedCellId) {
-                pinchRef.current = undefined;
-                return;
-              }
-
-              event.evt.preventDefault();
-              const [a, b] = Array.from(event.evt.touches);
-              if (!a || !b) {
-                return;
-              }
-
-              const placement = placements[selectedCellId];
-              if (!placement) {
-                return;
-              }
-
-              const distance = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
-              const current = pinchRef.current;
-              if (!current || current.cellId !== selectedCellId) {
-                pinchRef.current = { distance, cellId: selectedCellId };
-                return;
-              }
-
-              setSelectedCellZoom(selectedCellId, placement.scale + (distance - current.distance) / 180);
-              pinchRef.current = { distance, cellId: selectedCellId };
-            }}
-            onTouchEnd={() => {
-              pinchRef.current = undefined;
             }}
           >
             <Layer>
