@@ -2,6 +2,7 @@
 
 ## 0.2.0
 
+- Added Collage Editor Adjust Layout mode for moving existing dividers after photos are placed.
 - Added GitHub Pages deployment workflow.
 - Added landscape aspect ratios: 5:4 and 4:3.
 - Added 9:16 as a portrait counterpart to 16:9.

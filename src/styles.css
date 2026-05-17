@@ -39,6 +39,18 @@ button.secondary {
   border: 1px solid #c8c0b5;
 }
 
+button.mode-toggle {
+  background: #ffffff;
+  color: #26323d;
+  border: 1px solid #c8c0b5;
+}
+
+button.mode-toggle.is-active {
+  background: #1f4f64;
+  color: #ffffff;
+  border-color: #1f4f64;
+}
+
 button:disabled {
   cursor: not-allowed;
   opacity: 0.48;
@@ -229,6 +241,10 @@ button:disabled {
   background: transparent;
   border: 0;
   color: inherit;
+}
+
+.tray-pick:disabled {
+  cursor: not-allowed;
 }
 
 .tray-pick img {

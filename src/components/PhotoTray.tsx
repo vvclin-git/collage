@@ -2,17 +2,32 @@ import type { PhotoAsset } from "../types";
 
 type PhotoTrayProps = {
   photos: PhotoAsset[];
+  isPickingDisabled: boolean;
   selectedCellId?: string;
   onPickPhoto: (photoId: string) => void;
   onRemovePhoto: (photoId: string) => void;
 };
 
-export function PhotoTray({ photos, selectedCellId, onPickPhoto, onRemovePhoto }: PhotoTrayProps) {
+export function PhotoTray({
+  photos,
+  isPickingDisabled,
+  selectedCellId,
+  onPickPhoto,
+  onRemovePhoto,
+}: PhotoTrayProps) {
+  const canPickPhoto = Boolean(selectedCellId) && !isPickingDisabled;
+
   return (
     <section className="photo-tray" aria-label="Photo tray">
       <div className="tray-header">
         <h2>Photo Tray</h2>
-        <span>{selectedCellId ? "Choose a photo for the selected cell" : "Select a cell first"}</span>
+        <span>
+          {isPickingDisabled
+            ? "Switch to Photo Editing to place photos"
+            : selectedCellId
+              ? "Choose a photo for the selected cell"
+              : "Select a cell first"}
+        </span>
       </div>
       <div className="tray-list">
         {photos.length === 0 ? (
@@ -22,7 +37,7 @@ export function PhotoTray({ photos, selectedCellId, onPickPhoto, onRemovePhoto }
             <div
               key={photo.id}
               className="tray-photo"
-              aria-disabled={!selectedCellId}
+              aria-disabled={!canPickPhoto}
               draggable
               onDragStart={(event) => {
                 event.dataTransfer.setData("application/x-photo-id", photo.id);
@@ -34,10 +49,11 @@ export function PhotoTray({ photos, selectedCellId, onPickPhoto, onRemovePhoto }
                 type="button"
                 className="tray-pick"
                 onClick={() => {
-                  if (selectedCellId) {
+                  if (canPickPhoto) {
                     onPickPhoto(photo.id);
                   }
                 }}
+                disabled={!canPickPhoto}
                 aria-label={`Use ${photo.fileName}`}
               >
                 <img src={photo.src} alt="" />

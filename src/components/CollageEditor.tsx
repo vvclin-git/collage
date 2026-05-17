@@ -1,7 +1,7 @@
 import { Group, Image, Layer, Rect, Stage } from "react-konva";
 import type Konva from "konva";
 import { useMemo, useRef, useState } from "react";
-import { CollageControls } from "./Toolbar";
+import { CollageControls, type CollageInteractionMode } from "./Toolbar";
 import { PhotoTray } from "./PhotoTray";
 import { useElementSize, useLoadedImage } from "../hooks/useElementSize";
 import { exportCollage } from "../lib/export";
@@ -9,7 +9,9 @@ import {
   fitAspectRect,
   getPreviewSpacingScale,
   getRenderableLeafRects,
+  getSplitHandles,
   hitTestLeaf,
+  insetRect,
 } from "../lib/layout";
 import { clampOffset, getCoverTransform, getTrayPhotos, zoomPlacement } from "../lib/photos";
 import { snapshotAppState, useCollageStore } from "../store/useCollageStore";
@@ -22,10 +24,11 @@ type CollageEditorProps = {
 type PlacedImageProps = {
   cell: LeafRect;
   photo: PhotoAsset;
+  isInteractionDisabled: boolean;
   isSelected: boolean;
 };
 
-function PlacedImage({ cell, photo, isSelected }: PlacedImageProps) {
+function PlacedImage({ cell, photo, isInteractionDisabled, isSelected }: PlacedImageProps) {
   const image = useLoadedImage(photo.src);
   const placement = useCollageStore((state) => state.placements[cell.id]);
   const selectCell = useCollageStore((state) => state.selectCell);
@@ -54,12 +57,20 @@ function PlacedImage({ cell, photo, isSelected }: PlacedImageProps) {
         y={y}
         width={width}
         height={height}
-        draggable
+        draggable={!isInteractionDisabled}
         onPointerDown={(event) => {
+          if (isInteractionDisabled) {
+            return;
+          }
+
           event.cancelBubble = true;
           selectCell(cell.id);
         }}
         onDblClick={(event) => {
+          if (isInteractionDisabled) {
+            return;
+          }
+
           event.cancelBubble = true;
           updatePlacement(cell.id, {
             photoId: photo.id,
@@ -69,6 +80,10 @@ function PlacedImage({ cell, photo, isSelected }: PlacedImageProps) {
           });
         }}
         onDragMove={(event) => {
+          if (isInteractionDisabled) {
+            return;
+          }
+
           const nextX = event.target.x();
           const nextY = event.target.y();
           const nextOffsetX = nextX - (cell.rect.x + (cell.rect.width - width) / 2);
@@ -101,8 +116,10 @@ export function CollageEditor({ onImportFiles }: CollageEditorProps) {
   const removePlacement = useCollageStore((state) => state.removePlacement);
   const removePhotoAsset = useCollageStore((state) => state.removePhotoAsset);
   const updatePlacement = useCollageStore((state) => state.updatePlacement);
+  const updateSplitRatio = useCollageStore((state) => state.updateSplitRatio);
   const returnToLayoutEditor = useCollageStore((state) => state.returnToLayoutEditor);
   const [isExporting, setIsExporting] = useState(false);
+  const [interactionMode, setInteractionMode] = useState<CollageInteractionMode>("photo");
   const pinchRef = useRef<{ distance: number; cellId: string } | undefined>(undefined);
 
   const stageRect = useMemo(
@@ -121,6 +138,10 @@ export function CollageEditor({ onImportFiles }: CollageEditorProps) {
     () => getRenderableLeafRects(layout, stageRect, spacingScale),
     [layout, spacingScale, stageRect],
   );
+  const splitHandles = useMemo(
+    () => getSplitHandles(layout.root, insetRect(canvasRect, layout.padding * spacingScale)),
+    [canvasRect, layout.padding, layout.root, spacingScale],
+  );
   const trayPhotos = useMemo(() => getTrayPhotos(photos, placements), [photos, placements]);
   const photosById = useMemo(() => new Map(photos.map((photo) => [photo.id, photo])), [photos]);
 
@@ -130,8 +151,13 @@ export function CollageEditor({ onImportFiles }: CollageEditorProps) {
   };
 
   const selectedPlacement = selectedCellId ? placements[selectedCellId] : undefined;
+  const isAdjustMode = interactionMode === "adjust";
 
   const handleDrop = (event: React.DragEvent<HTMLDivElement>) => {
+    if (isAdjustMode) {
+      return;
+    }
+
     const photoId = event.dataTransfer.getData("application/x-photo-id");
     if (!photoId) {
       return;
@@ -182,6 +208,10 @@ export function CollageEditor({ onImportFiles }: CollageEditorProps) {
             width={stageRect.width}
             height={stageRect.height}
             onPointerDown={(event) => {
+              if (isAdjustMode) {
+                return;
+              }
+
               const stage = event.target.getStage();
               if (!stage) {
                 return;
@@ -195,7 +225,7 @@ export function CollageEditor({ onImportFiles }: CollageEditorProps) {
               selectCell(hitTestLeaf(point, leafRects));
             }}
             onTouchMove={(event) => {
-              if (event.evt.touches.length !== 2 || !selectedCellId) {
+              if (isAdjustMode || event.evt.touches.length !== 2 || !selectedCellId) {
                 pinchRef.current = undefined;
                 return;
               }
@@ -244,12 +274,69 @@ export function CollageEditor({ onImportFiles }: CollageEditorProps) {
                       <PlacedImage
                         cell={leaf}
                         photo={photo}
+                        isInteractionDisabled={isAdjustMode}
                         isSelected={leaf.id === selectedCellId}
                       />
                     ) : null}
                   </Group>
                 );
               })}
+              {isAdjustMode
+                ? splitHandles.map((handle) => (
+                    <Rect
+                      key={handle.id}
+                      {...handle.lineRect}
+                      fill="#1b6ca8"
+                      opacity={0.85}
+                      draggable
+                      dragBoundFunc={(pos) => {
+                        if (handle.direction === "vertical") {
+                          return {
+                            x: Math.min(
+                              handle.parentRect.x +
+                                handle.parentRect.width * 0.85 -
+                                handle.lineRect.width / 2,
+                              Math.max(
+                                handle.parentRect.x +
+                                  handle.parentRect.width * 0.15 -
+                                  handle.lineRect.width / 2,
+                                pos.x,
+                              ),
+                            ),
+                            y: handle.lineRect.y,
+                          };
+                        }
+
+                        return {
+                          x: handle.lineRect.x,
+                          y: Math.min(
+                            handle.parentRect.y +
+                              handle.parentRect.height * 0.85 -
+                              handle.lineRect.height / 2,
+                            Math.max(
+                              handle.parentRect.y +
+                                handle.parentRect.height * 0.15 -
+                                handle.lineRect.height / 2,
+                              pos.y,
+                            ),
+                          ),
+                        };
+                      }}
+                      onPointerDown={(event) => {
+                        event.cancelBubble = true;
+                      }}
+                      onDragMove={(event) => {
+                        const ratio =
+                          handle.direction === "vertical"
+                            ? (event.target.x() + handle.lineRect.width / 2 - handle.parentRect.x) /
+                              handle.parentRect.width
+                            : (event.target.y() + handle.lineRect.height / 2 - handle.parentRect.y) /
+                              handle.parentRect.height;
+                        updateSplitRatio(handle.id, ratio);
+                      }}
+                    />
+                  ))
+                : null}
             </Layer>
           </Stage>
         </div>
@@ -257,6 +344,7 @@ export function CollageEditor({ onImportFiles }: CollageEditorProps) {
 
       <PhotoTray
         photos={trayPhotos}
+        isPickingDisabled={isAdjustMode}
         selectedCellId={selectedCellId}
         onRemovePhoto={(photoId) => {
           if (window.confirm("Remove this image from the tray?")) {
@@ -272,10 +360,15 @@ export function CollageEditor({ onImportFiles }: CollageEditorProps) {
 
       <CollageControls
         canRemovePhoto={Boolean(selectedCellId && selectedPlacement)}
-        canZoomPhoto={Boolean(selectedCellId && selectedPlacement)}
+        canZoomPhoto={Boolean(selectedCellId && selectedPlacement) && !isAdjustMode}
+        interactionMode={interactionMode}
         isExporting={isExporting}
         zoomScale={selectedPlacement?.scale ?? 1}
         onImportFiles={onImportFiles}
+        onToggleInteractionMode={() => {
+          pinchRef.current = undefined;
+          setInteractionMode((mode) => (mode === "photo" ? "adjust" : "photo"));
+        }}
         onZoomChange={(scale) => {
           if (selectedCellId) {
             setSelectedCellZoom(selectedCellId, scale);

@@ -1,5 +1,7 @@
 import type { AspectRatio } from "../types";
 
+export type CollageInteractionMode = "photo" | "adjust";
+
 type LayoutControlsProps = {
   aspectRatio: AspectRatio;
   gap: number;
@@ -100,9 +102,11 @@ export function LayoutControls({
 type CollageControlsProps = {
   canRemovePhoto: boolean;
   canZoomPhoto: boolean;
+  interactionMode: CollageInteractionMode;
   isExporting: boolean;
   zoomScale: number;
   onImportFiles: (files: FileList) => void;
+  onToggleInteractionMode: () => void;
   onZoomChange: (scale: number) => void;
   onRemovePhoto: () => void;
   onEditLayout: () => void;
@@ -112,9 +116,11 @@ type CollageControlsProps = {
 export function CollageControls({
   canRemovePhoto,
   canZoomPhoto,
+  interactionMode,
   isExporting,
   zoomScale,
   onImportFiles,
+  onToggleInteractionMode,
   onZoomChange,
   onRemovePhoto,
   onEditLayout,
@@ -137,6 +143,14 @@ export function CollageControls({
         />
       </label>
 
+      <button
+        type="button"
+        className={interactionMode === "adjust" ? "mode-toggle is-active" : "mode-toggle"}
+        onClick={onToggleInteractionMode}
+      >
+        {interactionMode === "adjust" ? "Photo Editing" : "Adjust Layout"}
+      </button>
+
       <label>
         Zoom <strong>{zoomScale.toFixed(2)}x</strong>
         <input
@@ -145,7 +159,7 @@ export function CollageControls({
           max="4"
           step="0.01"
           value={zoomScale}
-          disabled={!canZoomPhoto}
+          disabled={!canZoomPhoto || interactionMode === "adjust"}
           onChange={(event) => onZoomChange(Number(event.target.value))}
         />
       </label>

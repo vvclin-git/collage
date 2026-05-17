@@ -9,6 +9,7 @@ Pure client-side photo collage editor built with React, TypeScript, Vite, React-
 - Start new layouts with 16px gap and 16px padding.
 - Import JPG, PNG, or WebP images without uploading them to a server.
 - Place images from the tray into cells, pan them inside each cell, and scale with pinch zoom or the external zoom slider.
+- Toggle Adjust Layout in the collage editor to move existing dividers after placing photos without changing photo transforms.
 - Remove unused images from the tray.
 - Export the collage as a local PNG.
 
