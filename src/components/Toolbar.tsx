@@ -5,10 +5,12 @@ type LayoutControlsProps = {
   gap: number;
   padding: number;
   canDeleteSplit: boolean;
+  canEqualizeSplit: boolean;
   onAspectRatioChange: (aspectRatio: AspectRatio) => void;
   onGapChange: (gap: number) => void;
   onPaddingChange: (padding: number) => void;
   onDeleteSplit: () => void;
+  onEqualizeSplit: () => void;
   onReset: () => void;
   onNext: () => void;
 };
@@ -18,10 +20,12 @@ export function LayoutControls({
   gap,
   padding,
   canDeleteSplit,
+  canEqualizeSplit,
   onAspectRatioChange,
   onGapChange,
   onPaddingChange,
   onDeleteSplit,
+  onEqualizeSplit,
   onReset,
   onNext,
 }: LayoutControlsProps) {
@@ -76,6 +80,14 @@ export function LayoutControls({
           disabled={!canDeleteSplit}
         >
           Delete Line
+        </button>
+        <button
+          type="button"
+          className="secondary"
+          onClick={onEqualizeSplit}
+          disabled={!canEqualizeSplit}
+        >
+          Equalize Cells
         </button>
         <button type="button" onClick={onNext}>
           Next

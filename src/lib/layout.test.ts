@@ -3,6 +3,7 @@ import type { CollageNode, LayoutState } from "../types";
 import {
   aspectRatioValue,
   clampRatio,
+  equalizeSplitChildren,
   getRenderableLeafRects,
   getSplitGesture,
   layoutNode,
@@ -115,5 +116,55 @@ describe("layout engine", () => {
       direction: "vertical",
       ratio: 0.4625,
     });
+  });
+
+  it("equalizes same-direction children under a split", () => {
+    const tree: CollageNode = {
+      id: "row",
+      type: "split",
+      direction: "vertical",
+      ratio: 0.1,
+      children: [
+        { id: "a", type: "leaf" },
+        {
+          id: "row-b",
+          type: "split",
+          direction: "vertical",
+          ratio: 0.7,
+          children: [
+            { id: "b", type: "leaf" },
+            {
+              id: "row-c",
+              type: "split",
+              direction: "vertical",
+              ratio: 0.25,
+              children: [
+                { id: "c", type: "leaf" },
+                {
+                  id: "row-d",
+                  type: "split",
+                  direction: "vertical",
+                  ratio: 0.8,
+                  children: [
+                    { id: "d", type: "leaf" },
+                    { id: "e", type: "leaf" },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+
+    const equalized = equalizeSplitChildren(tree, "row");
+
+    expect(layoutNode(equalized, { x: 0, y: 0, width: 100, height: 50 })).toEqual([
+      { id: "a", rect: { x: 0, y: 0, width: 20, height: 50 } },
+      { id: "b", rect: { x: 20, y: 0, width: 20, height: 50 } },
+      { id: "c", rect: { x: 40, y: 0, width: 20, height: 50 } },
+      { id: "d", rect: { x: 60, y: 0, width: 20, height: 50 } },
+      { id: "e", rect: { x: 80, y: 0, width: 20, height: 50 } },
+    ]);
   });
 });

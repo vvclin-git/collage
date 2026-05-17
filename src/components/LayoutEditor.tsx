@@ -27,6 +27,7 @@ export function LayoutEditor() {
   const updateSplitRatio = useCollageStore((state) => state.updateSplitRatio);
   const selectSplit = useCollageStore((state) => state.selectSplit);
   const deleteSelectedSplit = useCollageStore((state) => state.deleteSelectedSplit);
+  const equalizeSelectedSplit = useCollageStore((state) => state.equalizeSelectedSplit);
   const resetLayout = useCollageStore((state) => state.resetLayout);
   const enterCollageEditor = useCollageStore((state) => state.enterCollageEditor);
   const dragStartRef = useRef<{ leafId: string; point: Point } | undefined>(undefined);
@@ -192,9 +193,11 @@ export function LayoutEditor() {
         gap={layout.gap}
         padding={layout.padding}
         canDeleteSplit={Boolean(selectedSplitId)}
+        canEqualizeSplit={Boolean(selectedSplitId)}
         onAspectRatioChange={setAspectRatio}
         onGapChange={setGap}
         onPaddingChange={setPadding}
+        onEqualizeSplit={equalizeSelectedSplit}
         onDeleteSplit={() => {
           if (window.confirm("Delete the selected divider?")) {
             deleteSelectedSplit();

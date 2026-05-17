@@ -9,6 +9,7 @@ import type {
 } from "../types";
 import {
   createRootLeaf,
+  equalizeSplitChildren,
   removeSplit,
   splitLeaf,
   updateSplitRatio,
@@ -28,6 +29,7 @@ type CollageStore = {
   updateSplitRatio: (splitId: string, ratio: number) => void;
   selectSplit: (splitId?: string) => void;
   deleteSelectedSplit: () => void;
+  equalizeSelectedSplit: () => void;
   resetLayout: () => void;
   enterCollageEditor: () => void;
   returnToLayoutEditor: () => void;
@@ -93,6 +95,19 @@ export const useCollageStore = create<CollageStore>((set) => ({
           root: removeSplit(state.layout.root, state.selectedSplitId),
         },
         selectedSplitId: undefined,
+      };
+    }),
+  equalizeSelectedSplit: () =>
+    set((state) => {
+      if (!state.selectedSplitId) {
+        return state;
+      }
+
+      return {
+        layout: {
+          ...state.layout,
+          root: equalizeSplitChildren(state.layout.root, state.selectedSplitId),
+        },
       };
     }),
   resetLayout: () =>

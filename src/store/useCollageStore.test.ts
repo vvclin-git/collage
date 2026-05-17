@@ -110,4 +110,42 @@ describe("collage store", () => {
     expect(useCollageStore.getState().photos).toEqual([]);
     revoke.mockRestore();
   });
+
+  it("equalizes the selected split", () => {
+    useCollageStore.setState({
+      selectedSplitId: "split",
+      layout: {
+        root: {
+          id: "split",
+          type: "split",
+          direction: "horizontal",
+          ratio: 0.2,
+          children: [
+            { id: "top", type: "leaf" },
+            {
+              id: "bottom-split",
+              type: "split",
+              direction: "horizontal",
+              ratio: 0.8,
+              children: [
+                { id: "middle", type: "leaf" },
+                { id: "bottom", type: "leaf" },
+              ],
+            },
+          ],
+        },
+        gap: 8,
+        padding: 16,
+        aspectRatio: "1:1",
+      },
+    });
+
+    useCollageStore.getState().equalizeSelectedSplit();
+
+    const root = useCollageStore.getState().layout.root;
+    expect(root.type).toBe("split");
+    if (root.type === "split") {
+      expect(root.ratio).toBe(1 / 3);
+    }
+  });
 });

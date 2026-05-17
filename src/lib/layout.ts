@@ -249,6 +249,62 @@ export function updateSplitRatio(
   };
 }
 
+function collectSameDirectionSegments(
+  node: CollageNode,
+  direction: SplitDirection,
+): CollageNode[] {
+  if (node.type === "split" && node.direction === direction) {
+    return [
+      ...collectSameDirectionSegments(node.children[0], direction),
+      ...collectSameDirectionSegments(node.children[1], direction),
+    ];
+  }
+
+  return [node];
+}
+
+function buildEqualDirectionTree(
+  segments: CollageNode[],
+  direction: SplitDirection,
+  rootId: string,
+): CollageNode {
+  if (segments.length === 1) {
+    return segments[0]!;
+  }
+
+  const [first, ...rest] = segments;
+
+  return {
+    id: rootId,
+    type: "split",
+    direction,
+    ratio: 1 / segments.length,
+    children: [
+      first!,
+      buildEqualDirectionTree(rest, direction, createId("split")),
+    ],
+  };
+}
+
+export function equalizeSplitChildren(node: CollageNode, splitId: string): CollageNode {
+  if (node.type === "leaf") {
+    return node;
+  }
+
+  if (node.id === splitId) {
+    const segments = collectSameDirectionSegments(node, node.direction);
+    return buildEqualDirectionTree(segments, node.direction, node.id);
+  }
+
+  return {
+    ...node,
+    children: [
+      equalizeSplitChildren(node.children[0], splitId),
+      equalizeSplitChildren(node.children[1], splitId),
+    ],
+  };
+}
+
 export function getSplitHandles(node: CollageNode, rect: Rect): SplitHandle[] {
   if (node.type === "leaf") {
     return [];
