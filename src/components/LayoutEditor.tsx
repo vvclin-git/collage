@@ -5,6 +5,7 @@ import { LayoutControls } from "./Toolbar";
 import { useElementSize } from "../hooks/useElementSize";
 import {
   fitAspectRect,
+  getPreviewSpacingScale,
   getRenderableLeafRects,
   getSplitGesture,
   getSplitHandles,
@@ -40,13 +41,17 @@ export function LayoutEditor() {
     () => fitAspectRect(stageRect, layout.aspectRatio),
     [layout.aspectRatio, stageRect],
   );
+  const spacingScale = useMemo(
+    () => getPreviewSpacingScale(stageRect, layout.aspectRatio),
+    [layout.aspectRatio, stageRect],
+  );
   const leafRects = useMemo(
-    () => getRenderableLeafRects(layout, stageRect),
-    [layout, stageRect],
+    () => getRenderableLeafRects(layout, stageRect, spacingScale),
+    [layout, spacingScale, stageRect],
   );
   const splitHandles = useMemo(
-    () => getSplitHandles(layout.root, insetRect(canvasRect, layout.padding)),
-    [canvasRect, layout.padding, layout.root],
+    () => getSplitHandles(layout.root, insetRect(canvasRect, layout.padding * spacingScale)),
+    [canvasRect, layout.padding, layout.root, spacingScale],
   );
 
   const getPointer = (stage: Konva.Stage): Point | undefined => {

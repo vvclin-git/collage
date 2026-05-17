@@ -5,7 +5,12 @@ import { CollageControls } from "./Toolbar";
 import { PhotoTray } from "./PhotoTray";
 import { useElementSize, useLoadedImage } from "../hooks/useElementSize";
 import { exportCollage } from "../lib/export";
-import { fitAspectRect, getRenderableLeafRects, hitTestLeaf } from "../lib/layout";
+import {
+  fitAspectRect,
+  getPreviewSpacingScale,
+  getRenderableLeafRects,
+  hitTestLeaf,
+} from "../lib/layout";
 import { clampOffset, getCoverTransform, getTrayPhotos, zoomPlacement } from "../lib/photos";
 import { snapshotAppState, useCollageStore } from "../store/useCollageStore";
 import type { LeafRect, PhotoAsset, Point } from "../types";
@@ -108,9 +113,13 @@ export function CollageEditor({ onImportFiles }: CollageEditorProps) {
     () => fitAspectRect(stageRect, layout.aspectRatio),
     [layout.aspectRatio, stageRect],
   );
+  const spacingScale = useMemo(
+    () => getPreviewSpacingScale(stageRect, layout.aspectRatio),
+    [layout.aspectRatio, stageRect],
+  );
   const leafRects = useMemo(
-    () => getRenderableLeafRects(layout, stageRect),
-    [layout, stageRect],
+    () => getRenderableLeafRects(layout, stageRect, spacingScale),
+    [layout, spacingScale, stageRect],
   );
   const trayPhotos = useMemo(() => getTrayPhotos(photos, placements), [photos, placements]);
   const photosById = useMemo(() => new Map(photos.map((photo) => [photo.id, photo])), [photos]);

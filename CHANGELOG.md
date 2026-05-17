@@ -8,7 +8,8 @@
 - Added Equalize Cells for selected layout dividers, making same-direction children share the parent width or height evenly.
 - Lowered split gesture sensitivity so divider creation needs a more intentional swipe.
 - Added a selected-cell zoom slider and restored pinch zoom for placed photos.
-- Set the default layout gap and padding to 8px.
+- Set the default layout gap and padding to 16px.
+- Scaled editor spacing previews so padding and gap better match the exported image.
 - Removed confirmations for divider deletion and returning to layout editing.
 - Added image removal from the photo tray.
 - Fixed split gestures so horizontal swipes create horizontal dividers and vertical swipes create vertical dividers.

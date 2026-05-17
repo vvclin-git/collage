@@ -3,6 +3,7 @@ import type { CollageNode, LayoutState } from "../types";
 import {
   aspectRatioValue,
   clampRatio,
+  getPreviewSpacingScale,
   equalizeSplitChildren,
   getRenderableLeafRects,
   getSplitGesture,
@@ -87,6 +88,21 @@ describe("layout engine", () => {
 
     expect(getRenderableLeafRects(layout, { x: 0, y: 0, width: 200, height: 100 })).toEqual([
       { id: "root", rect: { x: 75, y: 25, width: 50, height: 50 } },
+    ]);
+  });
+
+  it("scales editor spacing previews against export size", () => {
+    const layout: LayoutState = {
+      root,
+      gap: 16,
+      padding: 16,
+      aspectRatio: "1:1",
+    };
+    const scale = getPreviewSpacingScale({ x: 0, y: 0, width: 256, height: 256 }, "1:1");
+
+    expect(scale).toBe(0.125);
+    expect(getRenderableLeafRects(layout, { x: 0, y: 0, width: 256, height: 256 }, scale)).toEqual([
+      { id: "root", rect: { x: 3, y: 3, width: 250, height: 250 } },
     ]);
   });
 

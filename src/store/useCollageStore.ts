@@ -44,8 +44,8 @@ type CollageStore = {
 function initialLayout(): LayoutState {
   return {
     root: createRootLeaf(),
-    gap: 8,
-    padding: 8,
+    gap: 16,
+    padding: 16,
     aspectRatio: "1:1",
   };
 }

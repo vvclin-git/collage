@@ -11,6 +11,7 @@ import { createId } from "./id";
 
 export const MIN_SPLIT_RATIO = 0.15;
 export const MAX_SPLIT_RATIO = 0.85;
+export const DEFAULT_EXPORT_SIZE = 2048;
 
 export type SplitHandle = {
   id: string;
@@ -130,12 +131,21 @@ export function layoutNode(node: CollageNode, rect: Rect): LeafRect[] {
   ];
 }
 
-export function getRenderableLeafRects(layout: LayoutState, canvasRect: Rect): LeafRect[] {
+export function getPreviewSpacingScale(canvasRect: Rect, aspectRatio: AspectRatio): number {
+  const aspectRect = fitAspectRect(canvasRect, aspectRatio);
+  return Math.max(aspectRect.width, aspectRect.height) / DEFAULT_EXPORT_SIZE;
+}
+
+export function getRenderableLeafRects(
+  layout: LayoutState,
+  canvasRect: Rect,
+  spacingScale = 1,
+): LeafRect[] {
   const aspectRect = fitAspectRect(canvasRect, layout.aspectRatio);
-  const paddedRect = insetRect(aspectRect, layout.padding);
+  const paddedRect = insetRect(aspectRect, layout.padding * spacingScale);
   return layoutNode(layout.root, paddedRect).map((leaf) => ({
     id: leaf.id,
-    rect: insetRect(leaf.rect, layout.gap / 2),
+    rect: insetRect(leaf.rect, (layout.gap * spacingScale) / 2),
   }));
 }
 
