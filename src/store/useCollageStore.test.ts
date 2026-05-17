@@ -8,7 +8,7 @@ describe("collage store", () => {
       layout: {
         root: { id: "root", type: "leaf" },
         gap: 8,
-        padding: 16,
+        padding: 8,
         aspectRatio: "1:1",
       },
       photos: [],
@@ -135,7 +135,7 @@ describe("collage store", () => {
           ],
         },
         gap: 8,
-        padding: 16,
+        padding: 8,
         aspectRatio: "1:1",
       },
     });

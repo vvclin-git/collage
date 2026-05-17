@@ -45,7 +45,7 @@ function initialLayout(): LayoutState {
   return {
     root: createRootLeaf(),
     gap: 8,
-    padding: 16,
+    padding: 8,
     aspectRatio: "1:1",
   };
 }

@@ -6,6 +6,7 @@ Pure client-side photo collage editor built with React, TypeScript, Vite, React-
 
 - Draw custom collage layouts with swipe-based horizontal and vertical split gestures.
 - Adjust divider ratios, equalize same-parent cell sizes, gap, padding, and portrait or landscape aspect ratios.
+- Start new layouts with 8px gap and 8px padding.
 - Import JPG, PNG, or WebP images without uploading them to a server.
 - Place images from the tray into cells, pan them inside each cell, and scale with pinch zoom or the external zoom slider.
 - Remove unused images from the tray.

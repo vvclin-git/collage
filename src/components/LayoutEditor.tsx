@@ -198,11 +198,7 @@ export function LayoutEditor() {
         onGapChange={setGap}
         onPaddingChange={setPadding}
         onEqualizeSplit={equalizeSelectedSplit}
-        onDeleteSplit={() => {
-          if (window.confirm("Delete the selected divider?")) {
-            deleteSelectedSplit();
-          }
-        }}
+        onDeleteSplit={deleteSelectedSplit}
         onReset={() => {
           if (window.confirm("Reset the layout to one empty cell?")) {
             resetLayout();

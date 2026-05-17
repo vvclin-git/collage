@@ -277,15 +277,7 @@ export function CollageEditor({ onImportFiles }: CollageEditorProps) {
             removePlacement(selectedCellId);
           }
         }}
-        onEditLayout={() => {
-          if (
-            window.confirm(
-              "Editing the layout clears current photo positions and returns photos to the tray.",
-            )
-          ) {
-            returnToLayoutEditor();
-          }
-        }}
+        onEditLayout={returnToLayoutEditor}
         onExport={() => {
           setIsExporting(true);
           exportCollage(snapshotAppState())
