@@ -6,12 +6,13 @@ import { useElementSize } from "../hooks/useElementSize";
 import {
   fitAspectRect,
   getRenderableLeafRects,
+  getSplitGesture,
   getSplitHandles,
   hitTestLeaf,
   insetRect,
 } from "../lib/layout";
 import { useCollageStore } from "../store/useCollageStore";
-import type { Point, SplitDirection } from "../types";
+import type { Point } from "../types";
 
 const MIN_SPLIT_DRAG = 28;
 
@@ -102,12 +103,8 @@ export function LayoutEditor() {
       return;
     }
 
-    const direction: SplitDirection = Math.abs(dx) >= Math.abs(dy) ? "vertical" : "horizontal";
-    const rawRatio =
-      direction === "vertical"
-        ? (point.x - leafRect.x) / leafRect.width
-        : (point.y - leafRect.y) / leafRect.height;
-    splitLeaf(start.leafId, direction, rawRatio);
+    const gesture = getSplitGesture(start.point, point, leafRect);
+    splitLeaf(start.leafId, gesture.direction, gesture.ratio);
   };
 
   return (

@@ -20,6 +20,11 @@ export type SplitHandle = {
   ratio: number;
 };
 
+export type SplitGesture = {
+  direction: SplitDirection;
+  ratio: number;
+};
+
 export function createRootLeaf(): CollageNode {
   return { id: createId("leaf"), type: "leaf" };
 }
@@ -143,6 +148,25 @@ export function hitTestLeaf(point: Point, leafRects: LeafRect[]): string | undef
   }
 
   return undefined;
+}
+
+export function getSplitGesture(start: Point, end: Point, leafRect: Rect): SplitGesture {
+  const dx = end.x - start.x;
+  const dy = end.y - start.y;
+  const direction: SplitDirection = Math.abs(dx) >= Math.abs(dy) ? "horizontal" : "vertical";
+  const midpoint = {
+    x: (start.x + end.x) / 2,
+    y: (start.y + end.y) / 2,
+  };
+  const rawRatio =
+    direction === "vertical"
+      ? (midpoint.x - leafRect.x) / leafRect.width
+      : (midpoint.y - leafRect.y) / leafRect.height;
+
+  return {
+    direction,
+    ratio: clampRatio(rawRatio),
+  };
 }
 
 export function findLeafRect(leafId: string, leafRects: LeafRect[]): Rect | undefined {

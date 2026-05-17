@@ -3,6 +3,7 @@ import type { CollageNode, LayoutState } from "../types";
 import {
   clampRatio,
   getRenderableLeafRects,
+  getSplitGesture,
   layoutNode,
   removeSplit,
   splitLeaf,
@@ -91,5 +92,18 @@ describe("layout engine", () => {
     expect(clampRatio(0)).toBe(0.15);
     expect(clampRatio(0.5)).toBe(0.5);
     expect(clampRatio(1)).toBe(0.85);
+  });
+
+  it("maps swipe direction to the divider line orientation", () => {
+    const rect = { x: 0, y: 0, width: 200, height: 100 };
+
+    expect(getSplitGesture({ x: 20, y: 40 }, { x: 180, y: 45 }, rect)).toEqual({
+      direction: "horizontal",
+      ratio: 0.425,
+    });
+    expect(getSplitGesture({ x: 90, y: 10 }, { x: 95, y: 90 }, rect)).toEqual({
+      direction: "vertical",
+      ratio: 0.4625,
+    });
   });
 });
