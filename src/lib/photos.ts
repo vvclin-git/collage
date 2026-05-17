@@ -10,15 +10,9 @@ export type CoverTransform = {
 
 export function getTrayPhotos(
   photos: PhotoAsset[],
-  placements: Record<string, PhotoPlacement | undefined>,
+  _placements: Record<string, PhotoPlacement | undefined>,
 ): PhotoAsset[] {
-  const usedPhotoIds = new Set(
-    Object.values(placements)
-      .filter(Boolean)
-      .map((placement) => placement!.photoId),
-  );
-
-  return photos.filter((photo) => !usedPhotoIds.has(photo.id));
+  return photos;
 }
 
 export function getCoverTransform(photo: PhotoAsset, rect: Rect): CoverTransform {

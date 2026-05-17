@@ -157,27 +157,18 @@ export const useCollageStore = create<CollageStore>((set) => ({
     }),
   selectCell: (cellId) => set({ selectedCellId: cellId }),
   placePhoto: (cellId, photoId) =>
-    set((state) => {
-      const nextPlacements: Record<string, PhotoPlacement | undefined> = {};
-
-      for (const [id, placement] of Object.entries(state.placements)) {
-        if (placement?.photoId !== photoId) {
-          nextPlacements[id] = placement;
-        }
-      }
-
-      nextPlacements[cellId] = {
-        photoId,
-        scale: 1,
-        offsetX: 0,
-        offsetY: 0,
-      };
-
-      return {
-        placements: nextPlacements,
+    set((state) => ({
+      placements: {
+        ...state.placements,
+        [cellId]: {
+          photoId,
+          scale: 1,
+          offsetX: 0,
+          offsetY: 0,
+        },
+      },
         selectedCellId: cellId,
-      };
-    }),
+    })),
   removePlacement: (cellId) =>
     set((state) => ({
       placements: {

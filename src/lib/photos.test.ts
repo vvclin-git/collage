@@ -12,13 +12,13 @@ const photo: PhotoAsset = {
 };
 
 describe("photo utilities", () => {
-  it("derives tray photos from placements", () => {
+  it("keeps all imported photos in the tray even when placed", () => {
     expect(
       getTrayPhotos(
         [photo, { ...photo, id: "photo-2" }],
         { cell: { photoId: "photo-1", scale: 1, offsetX: 0, offsetY: 0 } },
       ).map((item) => item.id),
-    ).toEqual(["photo-2"]);
+    ).toEqual(["photo-1", "photo-2"]);
   });
 
   it("computes cover transform", () => {

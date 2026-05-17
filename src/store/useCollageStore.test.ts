@@ -52,7 +52,7 @@ describe("collage store", () => {
     expect(useCollageStore.getState().placements).toEqual({});
   });
 
-  it("keeps one placement per photo", () => {
+  it("allows the same photo to be placed in multiple cells", () => {
     useCollageStore.setState({
       placements: { old: { photoId: "photo-1", scale: 1, offsetX: 0, offsetY: 0 } },
     });
@@ -60,6 +60,7 @@ describe("collage store", () => {
     useCollageStore.getState().placePhoto("new", "photo-1");
 
     expect(useCollageStore.getState().placements).toEqual({
+      old: { photoId: "photo-1", scale: 1, offsetX: 0, offsetY: 0 },
       new: { photoId: "photo-1", scale: 1, offsetX: 0, offsetY: 0 },
     });
   });
