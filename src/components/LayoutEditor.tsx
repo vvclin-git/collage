@@ -14,7 +14,7 @@ import {
 import { useCollageStore } from "../store/useCollageStore";
 import type { Point } from "../types";
 
-const MIN_SPLIT_DRAG = 28;
+const MIN_SPLIT_DRAG = 64;
 
 export function LayoutEditor() {
   const { ref, size } = useElementSize<HTMLDivElement>();

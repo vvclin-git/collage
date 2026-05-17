@@ -101,9 +101,9 @@ type CollageControlsProps = {
   canRemovePhoto: boolean;
   canZoomPhoto: boolean;
   isExporting: boolean;
+  zoomScale: number;
   onImportFiles: (files: FileList) => void;
-  onZoomIn: () => void;
-  onZoomOut: () => void;
+  onZoomChange: (scale: number) => void;
   onRemovePhoto: () => void;
   onEditLayout: () => void;
   onExport: () => void;
@@ -113,9 +113,9 @@ export function CollageControls({
   canRemovePhoto,
   canZoomPhoto,
   isExporting,
+  zoomScale,
   onImportFiles,
-  onZoomIn,
-  onZoomOut,
+  onZoomChange,
   onRemovePhoto,
   onEditLayout,
   onExport,
@@ -137,13 +137,20 @@ export function CollageControls({
         />
       </label>
 
+      <label>
+        Zoom <strong>{zoomScale.toFixed(2)}x</strong>
+        <input
+          type="range"
+          min="1"
+          max="4"
+          step="0.01"
+          value={zoomScale}
+          disabled={!canZoomPhoto}
+          onChange={(event) => onZoomChange(Number(event.target.value))}
+        />
+      </label>
+
       <div className="button-row">
-        <button type="button" className="secondary" onClick={onZoomOut} disabled={!canZoomPhoto}>
-          Zoom -
-        </button>
-        <button type="button" className="secondary" onClick={onZoomIn} disabled={!canZoomPhoto}>
-          Zoom +
-        </button>
         <button type="button" className="secondary" onClick={onEditLayout}>
           Edit Layout
         </button>

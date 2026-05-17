@@ -1,6 +1,6 @@
 import { Group, Image, Layer, Rect, Stage } from "react-konva";
 import type Konva from "konva";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { CollageControls } from "./Toolbar";
 import { PhotoTray } from "./PhotoTray";
 import { useElementSize, useLoadedImage } from "../hooks/useElementSize";
@@ -98,6 +98,7 @@ export function CollageEditor({ onImportFiles }: CollageEditorProps) {
   const updatePlacement = useCollageStore((state) => state.updatePlacement);
   const returnToLayoutEditor = useCollageStore((state) => state.returnToLayoutEditor);
   const [isExporting, setIsExporting] = useState(false);
+  const pinchRef = useRef<{ distance: number; cellId: string } | undefined>(undefined);
 
   const stageRect = useMemo(
     () => ({ x: 0, y: 0, width: Math.max(size.width, 1), height: Math.max(size.height, 1) }),
@@ -139,7 +140,7 @@ export function CollageEditor({ onImportFiles }: CollageEditorProps) {
     }
   };
 
-  const zoomSelectedCell = (cellId: string, delta: number) => {
+  const setSelectedCellZoom = (cellId: string, scale: number) => {
     const placement = placements[cellId];
     if (!placement) {
       return;
@@ -151,7 +152,7 @@ export function CollageEditor({ onImportFiles }: CollageEditorProps) {
       return;
     }
 
-    updatePlacement(cellId, zoomPlacement(placement, photo, cell.rect, placement.scale + delta));
+    updatePlacement(cellId, zoomPlacement(placement, photo, cell.rect, scale));
   };
 
   return (
@@ -183,6 +184,36 @@ export function CollageEditor({ onImportFiles }: CollageEditorProps) {
               }
 
               selectCell(hitTestLeaf(point, leafRects));
+            }}
+            onTouchMove={(event) => {
+              if (event.evt.touches.length !== 2 || !selectedCellId) {
+                pinchRef.current = undefined;
+                return;
+              }
+
+              event.evt.preventDefault();
+              const [a, b] = Array.from(event.evt.touches);
+              if (!a || !b) {
+                return;
+              }
+
+              const placement = placements[selectedCellId];
+              if (!placement) {
+                return;
+              }
+
+              const distance = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+              const current = pinchRef.current;
+              if (!current || current.cellId !== selectedCellId) {
+                pinchRef.current = { distance, cellId: selectedCellId };
+                return;
+              }
+
+              setSelectedCellZoom(selectedCellId, placement.scale + (distance - current.distance) / 180);
+              pinchRef.current = { distance, cellId: selectedCellId };
+            }}
+            onTouchEnd={() => {
+              pinchRef.current = undefined;
             }}
           >
             <Layer>
@@ -234,15 +265,11 @@ export function CollageEditor({ onImportFiles }: CollageEditorProps) {
         canRemovePhoto={Boolean(selectedCellId && selectedPlacement)}
         canZoomPhoto={Boolean(selectedCellId && selectedPlacement)}
         isExporting={isExporting}
+        zoomScale={selectedPlacement?.scale ?? 1}
         onImportFiles={onImportFiles}
-        onZoomIn={() => {
+        onZoomChange={(scale) => {
           if (selectedCellId) {
-            zoomSelectedCell(selectedCellId, 0.12);
-          }
-        }}
-        onZoomOut={() => {
-          if (selectedCellId) {
-            zoomSelectedCell(selectedCellId, -0.12);
+            setSelectedCellZoom(selectedCellId, scale);
           }
         }}
         onRemovePhoto={() => {
