@@ -87,4 +87,27 @@ describe("collage store", () => {
     expect(useCollageStore.getState().placements).toEqual({});
     revoke.mockRestore();
   });
+
+  it("removes unplaced tray photos", () => {
+    const revoke = vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => undefined);
+    useCollageStore.setState({
+      photos: [
+        {
+          id: "photo-1",
+          src: "blob:tray",
+          fileName: "tray.jpg",
+          width: 100,
+          height: 100,
+          mimeType: "image/jpeg",
+        },
+      ],
+      placements: {},
+    });
+
+    useCollageStore.getState().removePhotoAsset("photo-1");
+
+    expect(revoke).toHaveBeenCalledWith("blob:tray");
+    expect(useCollageStore.getState().photos).toEqual([]);
+    revoke.mockRestore();
+  });
 });

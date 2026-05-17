@@ -48,10 +48,16 @@ export function aspectRatioValue(aspectRatio: AspectRatio): number {
       return 1;
     case "4:5":
       return 4 / 5;
+    case "5:4":
+      return 5 / 4;
     case "3:4":
       return 3 / 4;
+    case "4:3":
+      return 4 / 3;
     case "16:9":
       return 16 / 9;
+    case "9:16":
+      return 9 / 16;
   }
 }
 

@@ -2,6 +2,15 @@
 
 Pure client-side photo collage editor built with React, TypeScript, Vite, React-Konva, and Zustand.
 
+## Features
+
+- Draw custom collage layouts with swipe-based horizontal and vertical split gestures.
+- Adjust divider ratios, gap, padding, and portrait or landscape aspect ratios.
+- Import JPG, PNG, or WebP images without uploading them to a server.
+- Place images from the tray into cells, pan them inside each cell, and use external Zoom +/- buttons for precise scaling.
+- Remove unused images from the tray.
+- Export the collage as a local PNG.
+
 ## Development
 
 ```bash
@@ -17,3 +26,9 @@ pnpm build
 ```
 
 The app keeps imported photos in the browser and exports PNG files locally.
+
+## Deployment
+
+GitHub Pages deployment is handled by `.github/workflows/deploy.yml`. The Vite base path is `/collage/`, so the published app URL is:
+
+https://vvclin-git.github.io/collage/

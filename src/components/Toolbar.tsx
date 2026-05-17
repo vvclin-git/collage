@@ -35,8 +35,11 @@ export function LayoutControls({
         >
           <option value="1:1">1:1</option>
           <option value="4:5">4:5</option>
+          <option value="5:4">5:4</option>
           <option value="3:4">3:4</option>
+          <option value="4:3">4:3</option>
           <option value="16:9">16:9</option>
+          <option value="9:16">9:16</option>
         </select>
       </label>
 
@@ -84,8 +87,11 @@ export function LayoutControls({
 
 type CollageControlsProps = {
   canRemovePhoto: boolean;
+  canZoomPhoto: boolean;
   isExporting: boolean;
   onImportFiles: (files: FileList) => void;
+  onZoomIn: () => void;
+  onZoomOut: () => void;
   onRemovePhoto: () => void;
   onEditLayout: () => void;
   onExport: () => void;
@@ -93,8 +99,11 @@ type CollageControlsProps = {
 
 export function CollageControls({
   canRemovePhoto,
+  canZoomPhoto,
   isExporting,
   onImportFiles,
+  onZoomIn,
+  onZoomOut,
   onRemovePhoto,
   onEditLayout,
   onExport,
@@ -117,6 +126,12 @@ export function CollageControls({
       </label>
 
       <div className="button-row">
+        <button type="button" className="secondary" onClick={onZoomOut} disabled={!canZoomPhoto}>
+          Zoom -
+        </button>
+        <button type="button" className="secondary" onClick={onZoomIn} disabled={!canZoomPhoto}>
+          Zoom +
+        </button>
         <button type="button" className="secondary" onClick={onEditLayout}>
           Edit Layout
         </button>

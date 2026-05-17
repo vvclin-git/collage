@@ -4,9 +4,10 @@ type PhotoTrayProps = {
   photos: PhotoAsset[];
   selectedCellId?: string;
   onPickPhoto: (photoId: string) => void;
+  onRemovePhoto: (photoId: string) => void;
 };
 
-export function PhotoTray({ photos, selectedCellId, onPickPhoto }: PhotoTrayProps) {
+export function PhotoTray({ photos, selectedCellId, onPickPhoto, onRemovePhoto }: PhotoTrayProps) {
   return (
     <section className="photo-tray" aria-label="Photo tray">
       <div className="tray-header">
@@ -18,16 +19,10 @@ export function PhotoTray({ photos, selectedCellId, onPickPhoto }: PhotoTrayProp
           <div className="empty-tray">Unused photos appear here.</div>
         ) : (
           photos.map((photo) => (
-            <button
-              type="button"
+            <div
               key={photo.id}
               className="tray-photo"
               aria-disabled={!selectedCellId}
-              onClick={() => {
-                if (selectedCellId) {
-                  onPickPhoto(photo.id);
-                }
-              }}
               draggable
               onDragStart={(event) => {
                 event.dataTransfer.setData("application/x-photo-id", photo.id);
@@ -35,9 +30,29 @@ export function PhotoTray({ photos, selectedCellId, onPickPhoto }: PhotoTrayProp
               }}
               title={photo.fileName}
             >
-              <img src={photo.src} alt="" />
+              <button
+                type="button"
+                className="tray-pick"
+                onClick={() => {
+                  if (selectedCellId) {
+                    onPickPhoto(photo.id);
+                  }
+                }}
+                aria-label={`Use ${photo.fileName}`}
+              >
+                <img src={photo.src} alt="" />
+              </button>
+              <button
+                type="button"
+                className="tray-remove"
+                onClick={() => onRemovePhoto(photo.id)}
+                aria-label={`Remove ${photo.fileName}`}
+                title="Remove image"
+              >
+                ×
+              </button>
               <span>{photo.fileName}</span>
-            </button>
+            </div>
           ))
         )}
       </div>

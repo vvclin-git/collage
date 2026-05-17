@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { CollageNode, LayoutState } from "../types";
 import {
+  aspectRatioValue,
   clampRatio,
   getRenderableLeafRects,
   getSplitGesture,
@@ -92,6 +93,15 @@ describe("layout engine", () => {
     expect(clampRatio(0)).toBe(0.15);
     expect(clampRatio(0.5)).toBe(0.5);
     expect(clampRatio(1)).toBe(0.85);
+  });
+
+  it("supports portrait and landscape aspect ratios", () => {
+    expect(aspectRatioValue("4:5")).toBe(4 / 5);
+    expect(aspectRatioValue("5:4")).toBe(5 / 4);
+    expect(aspectRatioValue("3:4")).toBe(3 / 4);
+    expect(aspectRatioValue("4:3")).toBe(4 / 3);
+    expect(aspectRatioValue("16:9")).toBe(16 / 9);
+    expect(aspectRatioValue("9:16")).toBe(9 / 16);
   });
 
   it("maps swipe direction to the divider line orientation", () => {

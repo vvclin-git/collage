@@ -211,6 +211,7 @@ button:disabled {
 }
 
 .tray-photo {
+  position: relative;
   flex: 0 0 92px;
   display: grid;
   gap: 6px;
@@ -222,11 +223,37 @@ button:disabled {
   border: 1px solid #c8c0b5;
 }
 
-.tray-photo img {
+.tray-pick {
+  min-height: 0;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  color: inherit;
+}
+
+.tray-pick img {
+  display: block;
   width: 100%;
   aspect-ratio: 1;
   object-fit: cover;
   border-radius: 4px;
+}
+
+.tray-remove {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  min-height: 24px;
+  padding: 0;
+  border-radius: 999px;
+  background: rgba(29, 37, 44, 0.82);
+  color: #ffffff;
+  font-size: 1rem;
+  line-height: 1;
 }
 
 .tray-photo span {
