@@ -2,6 +2,7 @@
 
 ## 0.2.0
 
+- Fixed pinch zoom by tracking native touch pointers on the canvas host instead of relying on Konva stage touch events.
 - Added Collage Editor Adjust Layout mode for moving existing dividers after photos are placed.
 - Kept photos in the tray after placement so the same image can be reused across cells.
 - Added GitHub Pages deployment workflow.
