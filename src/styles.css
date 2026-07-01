@@ -161,9 +161,15 @@ button:disabled {
 }
 
 .control-panel select,
-.control-panel input[type="range"] {
+.control-panel input[type="range"],
+.control-panel input[type="number"] {
   width: 100%;
 }
+
+.custom-aspect { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.custom-aspect button, .custom-aspect .field-error { grid-column: 1 / -1; }
+.field-error { color: #9b2c2c; font-size: 0.85rem; }
+.selection-status { margin: 0; color: #62707b; }
 
 .button-row {
   display: grid;
@@ -214,6 +220,7 @@ button:disabled {
   color: #62707b;
   font-size: 0.9rem;
 }
+.tray-clear { margin-left: auto; min-height: 32px; padding: 0 12px; }
 
 .tray-list {
   display: flex;

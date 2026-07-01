@@ -1,6 +1,10 @@
 export type AppMode = "layout" | "collage";
 
-export type AspectRatio = "1:1" | "4:5" | "5:4" | "3:4" | "4:3" | "16:9" | "9:16";
+export type AspectRatioPreset = "1:1" | "4:5" | "5:4" | "3:4" | "4:3" | "16:9" | "9:16";
+
+export type AspectRatio =
+  | { kind: "preset"; value: AspectRatioPreset }
+  | { kind: "custom"; width: number; height: number };
 
 export type CollageNode =
   | {

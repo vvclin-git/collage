@@ -1,5 +1,6 @@
 import type {
   AspectRatio,
+  AspectRatioPreset,
   CollageNode,
   LayoutState,
   LeafRect,
@@ -26,6 +27,17 @@ export type SplitGesture = {
   ratio: number;
 };
 
+export type EqualizeAxis = "width" | "height";
+export type EqualizeFailureReason =
+  | "insufficient-selection"
+  | "stale-leaf-ids"
+  | "incompatible-topology"
+  | "ratio-limits"
+  | "numerical-failure";
+export type EqualizeLeavesResult =
+  | { ok: true; root: CollageNode; changedSplitIds: string[] }
+  | { ok: false; reason: EqualizeFailureReason };
+
 export function createRootLeaf(): CollageNode {
   return { id: createId("leaf"), type: "leaf" };
 }
@@ -44,6 +56,13 @@ export function insetRect(rect: Rect, inset: number): Rect {
 }
 
 export function aspectRatioValue(aspectRatio: AspectRatio): number {
+  if (aspectRatio.kind === "custom") {
+    return aspectRatio.width / aspectRatio.height;
+  }
+  return presetAspectRatioValue(aspectRatio.value);
+}
+
+function presetAspectRatioValue(aspectRatio: AspectRatioPreset): number {
   switch (aspectRatio) {
     case "1:1":
       return 1;
@@ -60,6 +79,123 @@ export function aspectRatioValue(aspectRatio: AspectRatio): number {
     case "9:16":
       return 9 / 16;
   }
+}
+
+type Interval = { min: number; max: number };
+
+function intersect(a: Interval, b: Interval): Interval | undefined {
+  const min = Math.max(a.min, b.min);
+  const max = Math.min(a.max, b.max);
+  return min <= max + 1e-13 ? { min, max } : undefined;
+}
+
+function axisDirection(axis: EqualizeAxis): SplitDirection {
+  return axis === "width" ? "vertical" : "horizontal";
+}
+
+function chooseExtent(interval: Interval, preferred: number): number {
+  return Math.max(interval.min, Math.min(interval.max, preferred));
+}
+
+export function equalizeSelectedLeaves(root: CollageNode, selectedLeafIds: ReadonlySet<string>, axis: EqualizeAxis): EqualizeLeavesResult {
+  if (selectedLeafIds.size < 2) return { ok: false, reason: "insufficient-selection" };
+  const leaves = layoutNode(root, { x: 0, y: 0, width: 1, height: 1 });
+  const leafIds = new Set(leaves.map((leaf) => leaf.id));
+  if (leafIds.size !== leaves.length) return { ok: false, reason: "incompatible-topology" };
+  if ([...selectedLeafIds].some((id) => !leafIds.has(id))) return { ok: false, reason: "stale-leaf-ids" };
+  const direction = axisDirection(axis);
+  const originalTargets = leaves.filter((leaf) => selectedLeafIds.has(leaf.id)).map((leaf) => axis === "width" ? leaf.rect.width : leaf.rect.height);
+  type Constraint = Interval | undefined | null;
+  const scale = (value: Constraint, factor: number): Constraint => value == null ? value : ({ min: value.min * factor, max: value.max * factor });
+  const combine = (a: Constraint, b: Constraint): Constraint => {
+    if (a === null || b === null) return null;
+    if (!a) return b;
+    if (!b) return a;
+    return intersect(a, b) ?? null;
+  };
+  const feasible = (node: CollageNode, locks: ReadonlyMap<string, number>, min = MIN_SPLIT_RATIO, max = MAX_SPLIT_RATIO): Constraint => {
+    if (node.type === "leaf") return selectedLeafIds.has(node.id) ? { min: 1, max: 1 } : undefined;
+    const a = feasible(node.children[0], locks, min, max);
+    const b = feasible(node.children[1], locks, min, max);
+    if (a === null || b === null) return null;
+    if (node.direction !== direction) return combine(a, b);
+    const locked = locks.get(node.id);
+    if (locked !== undefined) return combine(scale(a, locked), scale(b, 1 - locked));
+    if (!a && b) return { min: b.min * min, max: b.max * max };
+    if (!b && a) return { min: a.min * min, max: a.max * max };
+    if (!a || !b) return undefined;
+    const points: Array<[number, number]> = [];
+    const add = (qa: number, qb: number) => {
+      const ratio = qb / (qa + qb);
+      if (qa >= a.min - 1e-13 && qa <= a.max + 1e-13 && qb >= b.min - 1e-13 && qb <= b.max + 1e-13 && ratio >= min - 1e-13 && ratio <= max + 1e-13) points.push([qa, qb]);
+    };
+    for (const qa of [a.min, a.max]) for (const qb of [b.min, b.max]) add(qa, qb);
+    for (const qa of [a.min, a.max]) {
+      add(qa, qa * min / max);
+      add(qa, qa * max / min);
+    }
+    for (const qb of [b.min, b.max]) {
+      add(qb * min / max, qb);
+      add(qb * max / min, qb);
+    }
+    if (!points.length) return null;
+    const targets = points.map(([qa, qb]) => qa * qb / (qa + qb));
+    return { min: Math.min(...targets), max: Math.max(...targets) };
+  };
+
+  const ranked: Array<{ id: string; ratio: number; unselected: number; depth: number; order: number }> = [];
+  let order = 0;
+  const collect = (node: CollageNode, depth: number): number => {
+    const currentOrder = order++;
+    if (node.type === "leaf") return selectedLeafIds.has(node.id) ? 0 : 1;
+    const unselected = collect(node.children[0], depth + 1) + collect(node.children[1], depth + 1);
+    if (node.direction === direction) ranked.push({ id: node.id, ratio: node.ratio, unselected, depth, order: currentOrder });
+    return unselected;
+  };
+  collect(root, 0);
+  ranked.sort((a, b) => b.unselected - a.unselected || a.depth - b.depth || a.order - b.order);
+  const locks = new Map<string, number>();
+  for (const split of ranked) {
+    locks.set(split.id, split.ratio);
+    const interval = feasible(root, locks);
+    if (interval === null || (interval && interval.min > interval.max + 1e-12)) locks.delete(split.id);
+  }
+  const rootInterval = feasible(root, locks);
+  if (rootInterval == null || rootInterval.min > rootInterval.max + 1e-12) {
+    const relaxed = feasible(root, new Map(), 1e-12, 1 - 1e-12);
+    return { ok: false, reason: relaxed && relaxed.min <= relaxed.max ? "ratio-limits" : "incompatible-topology" };
+  }
+  const preferredTarget = originalTargets[0]!;
+  const target = chooseExtent(rootInterval, preferredTarget);
+  const changed: string[] = [];
+  const rebuild = (node: CollageNode, q: number): CollageNode | undefined => {
+    if (node.type === "leaf") return node;
+    if (node.direction !== direction) {
+      const a = rebuild(node.children[0], q);
+      const b = rebuild(node.children[1], q);
+      return a && b ? { ...node, children: [a, b] } : undefined;
+    }
+    const ai = feasible(node.children[0], locks);
+    const bi = feasible(node.children[1], locks);
+    let low = MIN_SPLIT_RATIO;
+    let high = MAX_SPLIT_RATIO;
+    if (ai === null || bi === null) return undefined;
+    if (ai) { low = Math.max(low, q / ai.max); high = Math.min(high, q / ai.min); }
+    if (bi) { low = Math.max(low, 1 - q / bi.min); high = Math.min(high, 1 - q / bi.max); }
+    const ratio = locks.get(node.id) ?? chooseExtent({ min: low, max: high }, node.ratio);
+    if (ratio < low - 1e-11 || ratio > high + 1e-11) return undefined;
+    const a = rebuild(node.children[0], ai ? q / ratio : q);
+    const b = rebuild(node.children[1], bi ? q / (1 - ratio) : q);
+    if (!a || !b) return undefined;
+    if (Math.abs(ratio - node.ratio) > 1e-14) changed.push(node.id);
+    return { ...node, ratio, children: [a, b] };
+  };
+  const next = rebuild(root, target);
+  if (!next) return { ok: false, reason: "numerical-failure" };
+  const values = layoutNode(next, { x: 0, y: 0, width: 1, height: 1 }).filter((leaf) => selectedLeafIds.has(leaf.id)).map((leaf) => axis === "width" ? leaf.rect.width : leaf.rect.height);
+  if (values.some((value) => !Number.isFinite(value) || Math.abs(value - values[0]!) > 1e-10)) return { ok: false, reason: "numerical-failure" };
+  changed.sort((a, b) => ranked.findIndex((item) => item.id === a) - ranked.findIndex((item) => item.id === b));
+  return { ok: true, root: next, changedSplitIds: changed };
 }
 
 export function fitAspectRect(bounds: Rect, aspectRatio: AspectRatio): Rect {

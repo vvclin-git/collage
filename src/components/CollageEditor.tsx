@@ -115,6 +115,8 @@ export function CollageEditor({ onImportFiles }: CollageEditorProps) {
   const placePhoto = useCollageStore((state) => state.placePhoto);
   const removePlacement = useCollageStore((state) => state.removePlacement);
   const removePhotoAsset = useCollageStore((state) => state.removePhotoAsset);
+  const clearPhotoAssets = useCollageStore((state) => state.clearPhotoAssets);
+  const setSpacing = useCollageStore((state) => state.setSpacing);
   const updatePlacement = useCollageStore((state) => state.updatePlacement);
   const updateSplitRatio = useCollageStore((state) => state.updateSplitRatio);
   const returnToLayoutEditor = useCollageStore((state) => state.returnToLayoutEditor);
@@ -378,12 +380,13 @@ export function CollageEditor({ onImportFiles }: CollageEditorProps) {
 
       <PhotoTray
         photos={trayPhotos}
+        photoCount={photos.length}
+        isExporting={isExporting}
         isPickingDisabled={isAdjustMode}
         selectedCellId={selectedCellId}
-        onRemovePhoto={(photoId) => {
-          if (window.confirm("Remove this image from the tray?")) {
-            removePhotoAsset(photoId);
-          }
+        onRemovePhoto={removePhotoAsset}
+        onClearAll={() => {
+          if (window.confirm(`Clear all ${photos.length} photos? Cell placements will also be cleared.`)) clearPhotoAssets();
         }}
         onPickPhoto={(photoId) => {
           if (selectedCellId) {
@@ -397,6 +400,8 @@ export function CollageEditor({ onImportFiles }: CollageEditorProps) {
         canZoomPhoto={Boolean(selectedCellId && selectedPlacement) && !isAdjustMode}
         interactionMode={interactionMode}
         isExporting={isExporting}
+        gap={layout.gap}
+        padding={layout.padding}
         zoomScale={selectedPlacement?.scale ?? 1}
         onImportFiles={onImportFiles}
         onToggleInteractionMode={() => {
@@ -408,6 +413,7 @@ export function CollageEditor({ onImportFiles }: CollageEditorProps) {
             setSelectedCellZoom(selectedCellId, scale);
           }
         }}
+        onSpacingChange={(gap, padding) => setSpacing(gap, padding, canvasRect)}
         onRemovePhoto={() => {
           if (selectedCellId) {
             removePlacement(selectedCellId);
