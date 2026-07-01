@@ -2,16 +2,22 @@ import type { PhotoAsset } from "../types";
 
 type PhotoTrayProps = {
   photos: PhotoAsset[];
+  photoCount: number;
   isPickingDisabled: boolean;
   selectedCellId?: string;
+  isExporting: boolean;
+  onClearAll: () => void;
   onPickPhoto: (photoId: string) => void;
   onRemovePhoto: (photoId: string) => void;
 };
 
 export function PhotoTray({
   photos,
+  photoCount,
   isPickingDisabled,
   selectedCellId,
+  isExporting,
+  onClearAll,
   onPickPhoto,
   onRemovePhoto,
 }: PhotoTrayProps) {
@@ -28,6 +34,7 @@ export function PhotoTray({
               ? "Choose a photo for the selected cell"
               : "Select a cell first"}
         </span>
+        <button type="button" className="secondary tray-clear" disabled={photoCount === 0 || isExporting} onClick={onClearAll}>Clear All</button>
       </div>
       <div className="tray-list">
         {photos.length === 0 ? (

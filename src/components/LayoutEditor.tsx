@@ -21,14 +21,14 @@ export function LayoutEditor() {
   const { ref, size } = useElementSize<HTMLDivElement>();
   const layout = useCollageStore((state) => state.layout);
   const selectedSplitId = useCollageStore((state) => state.selectedSplitId);
-  const setGap = useCollageStore((state) => state.setGap);
-  const setPadding = useCollageStore((state) => state.setPadding);
+  const selectedLayoutLeafIds = useCollageStore((state) => state.selectedLayoutLeafIds);
   const setAspectRatio = useCollageStore((state) => state.setAspectRatio);
   const splitLeaf = useCollageStore((state) => state.splitLeaf);
   const updateSplitRatio = useCollageStore((state) => state.updateSplitRatio);
   const selectSplit = useCollageStore((state) => state.selectSplit);
   const deleteSelectedSplit = useCollageStore((state) => state.deleteSelectedSplit);
-  const equalizeSelectedSplit = useCollageStore((state) => state.equalizeSelectedSplit);
+  const toggleLayoutLeafSelection = useCollageStore((state) => state.toggleLayoutLeafSelection);
+  const equalizeSelectedLeaves = useCollageStore((state) => state.equalizeSelectedLeaves);
   const resetLayout = useCollageStore((state) => state.resetLayout);
   const enterCollageEditor = useCollageStore((state) => state.enterCollageEditor);
   const dragStartRef = useRef<{ leafId: string; point: Point } | undefined>(undefined);
@@ -77,7 +77,6 @@ export function LayoutEditor() {
     }
 
     dragStartRef.current = { leafId, point };
-    selectSplit(undefined);
   };
 
   const onStagePointerUp = (event: Konva.KonvaEventObject<PointerEvent>) => {
@@ -101,6 +100,7 @@ export function LayoutEditor() {
     const dy = point.y - start.point.y;
     const distance = Math.hypot(dx, dy);
     if (distance < MIN_SPLIT_DRAG) {
+      toggleLayoutLeafSelection(start.leafId);
       return;
     }
 
@@ -136,8 +136,8 @@ export function LayoutEditor() {
                   key={leaf.id}
                   {...leaf.rect}
                   fill="#fffaf1"
-                  stroke="#b8ad9b"
-                  strokeWidth={1}
+                  stroke={selectedLayoutLeafIds.includes(leaf.id) ? "#1b6ca8" : "#b8ad9b"}
+                  strokeWidth={selectedLayoutLeafIds.includes(leaf.id) ? 4 : 1}
                   cornerRadius={3}
                 />
               ))}
@@ -195,14 +195,22 @@ export function LayoutEditor() {
 
       <LayoutControls
         aspectRatio={layout.aspectRatio}
-        gap={layout.gap}
-        padding={layout.padding}
         canDeleteSplit={Boolean(selectedSplitId)}
-        canEqualizeSplit={Boolean(selectedSplitId)}
+        selectedCellCount={selectedLayoutLeafIds.length}
         onAspectRatioChange={setAspectRatio}
-        onGapChange={setGap}
-        onPaddingChange={setPadding}
-        onEqualizeSplit={equalizeSelectedSplit}
+        onEqualize={(axis) => {
+          const result = equalizeSelectedLeaves(axis);
+          if (!result.ok) {
+            const messages = {
+              "insufficient-selection": "Select at least two cells to equalize.",
+              "stale-leaf-ids": "The selection is out of date. Select the cells again.",
+              "incompatible-topology": "These cells cannot be equalized on that axis with the current layout.",
+              "ratio-limits": "These cells cannot be equalized without making another cell too small.",
+              "numerical-failure": "The cells could not be equalized reliably. The layout was not changed.",
+            };
+            window.alert(messages[result.reason]);
+          }
+        }}
         onDeleteSplit={deleteSelectedSplit}
         onReset={() => {
           if (window.confirm("Reset the layout to one empty cell?")) {

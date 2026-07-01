@@ -5,6 +5,7 @@ import {
   clampRatio,
   getPreviewSpacingScale,
   equalizeSplitChildren,
+  equalizeSelectedLeaves,
   getRenderableLeafRects,
   getSplitGesture,
   layoutNode,
@@ -83,7 +84,7 @@ describe("layout engine", () => {
       root,
       gap: 10,
       padding: 20,
-      aspectRatio: "1:1",
+      aspectRatio: { kind: "preset", value: "1:1" },
     };
 
     expect(getRenderableLeafRects(layout, { x: 0, y: 0, width: 200, height: 100 })).toEqual([
@@ -96,9 +97,9 @@ describe("layout engine", () => {
       root,
       gap: 16,
       padding: 16,
-      aspectRatio: "1:1",
+      aspectRatio: { kind: "preset", value: "1:1" },
     };
-    const scale = getPreviewSpacingScale({ x: 0, y: 0, width: 256, height: 256 }, "1:1");
+    const scale = getPreviewSpacingScale({ x: 0, y: 0, width: 256, height: 256 }, { kind: "preset", value: "1:1" });
 
     expect(scale).toBe(0.125);
     expect(getRenderableLeafRects(layout, { x: 0, y: 0, width: 256, height: 256 }, scale)).toEqual([
@@ -113,12 +114,103 @@ describe("layout engine", () => {
   });
 
   it("supports portrait and landscape aspect ratios", () => {
-    expect(aspectRatioValue("4:5")).toBe(4 / 5);
-    expect(aspectRatioValue("5:4")).toBe(5 / 4);
-    expect(aspectRatioValue("3:4")).toBe(3 / 4);
-    expect(aspectRatioValue("4:3")).toBe(4 / 3);
-    expect(aspectRatioValue("16:9")).toBe(16 / 9);
-    expect(aspectRatioValue("9:16")).toBe(9 / 16);
+    expect(aspectRatioValue({ kind: "preset", value: "4:5" })).toBe(4 / 5);
+    expect(aspectRatioValue({ kind: "preset", value: "5:4" })).toBe(5 / 4);
+    expect(aspectRatioValue({ kind: "preset", value: "3:4" })).toBe(3 / 4);
+    expect(aspectRatioValue({ kind: "preset", value: "4:3" })).toBe(4 / 3);
+    expect(aspectRatioValue({ kind: "preset", value: "16:9" })).toBe(16 / 9);
+    expect(aspectRatioValue({ kind: "preset", value: "9:16" })).toBe(9 / 16);
+    expect(aspectRatioValue({ kind: "custom", width: 7, height: 3 })).toBe(7 / 3);
+  });
+
+  it("equalizes arbitrary selected leaf widths without changing horizontal ratios or IDs", () => {
+    const tree: CollageNode = { id: "v", type: "split", direction: "vertical", ratio: 0.3, children: [
+      { id: "a", type: "leaf" },
+      { id: "h", type: "split", direction: "horizontal", ratio: 0.4, children: [
+        { id: "b", type: "leaf" },
+        { id: "v2", type: "split", direction: "vertical", ratio: 0.7, children: [{ id: "c", type: "leaf" }, { id: "d", type: "leaf" }] },
+      ] },
+    ] };
+    const snapshot = structuredClone(tree);
+    const result = equalizeSelectedLeaves(tree, new Set(["a", "c"]), "width");
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const rects = layoutNode(result.root, { x: 0, y: 0, width: 1, height: 1 });
+    expect(rects.find((x) => x.id === "a")!.rect.width).toBeCloseTo(rects.find((x) => x.id === "c")!.rect.width, 12);
+    expect(result.root.type).toBe("split");
+    if (result.root.type !== "split") return;
+    expect((result.root.children[1] as Extract<CollageNode, { type: "split" }>).ratio).toBe(0.4);
+    expect(tree).toEqual(snapshot);
+    expect(rects.map((x) => x.id)).toEqual(["a", "b", "c", "d"]);
+  });
+
+  it("reports explicit selection failures", () => {
+    expect(equalizeSelectedLeaves(root, new Set(["root"]), "width")).toEqual({ ok: false, reason: "insufficient-selection" });
+    expect(equalizeSelectedLeaves(root, new Set(["root", "missing"]), "width")).toEqual({ ok: false, reason: "stale-leaf-ids" });
+  });
+
+  it("equalizes heights while preserving every vertical ratio", () => {
+    const tree: CollageNode = {
+      id: "h",
+      type: "split",
+      direction: "horizontal",
+      ratio: 0.7,
+      children: [
+        { id: "v", type: "split", direction: "vertical", ratio: 0.23, children: [{ id: "a", type: "leaf" }, { id: "b", type: "leaf" }] },
+        { id: "c", type: "leaf" },
+      ],
+    };
+    const result = equalizeSelectedLeaves(tree, new Set(["a", "c"]), "height");
+    expect(result.ok).toBe(true);
+    if (!result.ok || result.root.type !== "split" || result.root.children[0].type !== "split") return;
+    const rects = layoutNode(result.root, { x: 0, y: 0, width: 1, height: 1 });
+    expect(rects.find((item) => item.id === "a")!.rect.height).toBeCloseTo(rects.find((item) => item.id === "c")!.rect.height, 12);
+    expect(result.root.children[0].ratio).toBe(0.23);
+  });
+
+  it("distinguishes incompatible topology from ratio-limit failure", () => {
+    const incompatible: CollageNode = { id: "h", type: "split", direction: "horizontal", ratio: 0.5, children: [
+      { id: "a", type: "leaf" },
+      { id: "v", type: "split", direction: "vertical", ratio: 0.5, children: [{ id: "b", type: "leaf" }, { id: "c", type: "leaf" }] },
+    ] };
+    expect(equalizeSelectedLeaves(incompatible, new Set(["a", "b", "c"]), "width")).toEqual({ ok: false, reason: "incompatible-topology" });
+
+    let chain: CollageNode = { id: "g", type: "leaf" };
+    const selected = new Set(["g"]);
+    for (let index = 5; index >= 0; index -= 1) {
+      const id = `l${index}`;
+      selected.add(id);
+      chain = { id: `s${index}`, type: "split", direction: "vertical", ratio: 0.5, children: [{ id, type: "leaf" }, chain] };
+    }
+    expect(equalizeSelectedLeaves(chain, selected, "width")).toEqual({ ok: false, reason: "ratio-limits" });
+  });
+
+  it("is deterministic for deep trees and orders changed split IDs by preservation priority", () => {
+    const tree: CollageNode = {
+      id: "outer", type: "split", direction: "vertical", ratio: 0.4,
+      children: [
+        { id: "a", type: "leaf" },
+        { id: "inner", type: "split", direction: "vertical", ratio: 0.6, children: [
+          { id: "b", type: "leaf" },
+          { id: "deep", type: "split", direction: "vertical", ratio: 0.55, children: [{ id: "c", type: "leaf" }, { id: "d", type: "leaf" }] },
+        ] },
+      ],
+    };
+    const before = structuredClone(tree);
+    const first = equalizeSelectedLeaves(tree, new Set(["a", "c"]), "width");
+    const second = equalizeSelectedLeaves(tree, new Set(["a", "c"]), "width");
+    expect(first).toEqual(second);
+    expect(tree).toEqual(before);
+    expect(first.ok).toBe(true);
+    if (!first.ok) return;
+    expect(first.changedSplitIds).toEqual([...new Set(first.changedSplitIds)]);
+    expect(first.root.type).toBe("split");
+    if (first.root.type !== "split") return;
+    expect(first.root.ratio).toBe(0.4);
+    expect(first.changedSplitIds).not.toContain("outer");
+    expect(first.changedSplitIds.length).toBeGreaterThan(0);
+    const ids = layoutNode(first.root, { x: 0, y: 0, width: 1, height: 1 }).map((item) => item.id);
+    expect(ids).toEqual(["a", "b", "c", "d"]);
   });
 
   it("maps swipe direction to the divider line orientation", () => {

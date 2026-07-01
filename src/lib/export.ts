@@ -2,12 +2,18 @@ import type { AppState, PhotoAsset, Rect } from "../types";
 import { aspectRatioValue, getRenderableLeafRects } from "./layout";
 import { getCoverTransform } from "./photos";
 
-type ExportOptions = {
+export type ExportOptions = {
   size?: number;
   fileName?: string;
 };
 
-function getExportRect(aspectRatio: AppState["layout"]["aspectRatio"], size: number): Rect {
+let lastExportTimestamp = -1;
+let exportSequence = 0;
+
+export function getExportRect(
+  aspectRatio: AppState["layout"]["aspectRatio"],
+  size: number,
+): Rect {
   const ratio = aspectRatioValue(aspectRatio);
 
   if (ratio >= 1) {
@@ -15,6 +21,31 @@ function getExportRect(aspectRatio: AppState["layout"]["aspectRatio"], size: num
   }
 
   return { x: 0, y: 0, width: Math.round(size * ratio), height: size };
+}
+
+function pad(value: number, length = 2): string {
+  return String(value).padStart(length, "0");
+}
+
+export function createDefaultExportFileName(now = new Date()): string {
+  const timestamp = now.getTime();
+  if (timestamp === lastExportTimestamp) {
+    exportSequence += 1;
+  } else {
+    lastExportTimestamp = timestamp;
+    exportSequence = 0;
+  }
+
+  const datePart = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}`;
+  const timePart = `${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+  const milliseconds = pad(now.getMilliseconds(), 3);
+  const sequence = exportSequence === 0 ? "" : `-${exportSequence}`;
+
+  return `collage-${datePart}-${timePart}-${milliseconds}${sequence}.png`;
+}
+
+export function getExportFileName(options: ExportOptions, now = new Date()): string {
+  return options.fileName ?? createDefaultExportFileName(now);
 }
 
 function loadImage(photo: PhotoAsset): Promise<HTMLImageElement> {
@@ -91,7 +122,7 @@ export async function exportCollage(
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = options.fileName ?? "collage.png";
+      link.download = getExportFileName(options);
       link.click();
       URL.revokeObjectURL(url);
       resolve();

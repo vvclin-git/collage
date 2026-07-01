@@ -5,15 +5,22 @@ import type {
   LayoutState,
   PhotoAsset,
   PhotoPlacement,
+  Rect,
   SplitDirection,
 } from "../types";
 import {
   createRootLeaf,
+  equalizeSelectedLeaves as solveEqualizeSelectedLeaves,
+  type EqualizeAxis,
+  type EqualizeLeavesResult,
+  getPreviewSpacingScale,
+  getRenderableLeafRects,
   equalizeSplitChildren,
   removeSplit,
   splitLeaf,
   updateSplitRatio,
 } from "../lib/layout";
+import { clampOffset } from "../lib/photos";
 
 type CollageStore = {
   mode: AppMode;
@@ -22,19 +29,25 @@ type CollageStore = {
   placements: Record<string, PhotoPlacement | undefined>;
   selectedSplitId?: string;
   selectedCellId?: string;
+  selectedLayoutLeafIds: string[];
   setGap: (gap: number) => void;
   setPadding: (padding: number) => void;
+  setSpacing: (gap: number, padding: number, canvasRect: Rect) => void;
   setAspectRatio: (aspectRatio: AspectRatio) => void;
   splitLeaf: (leafId: string, direction: SplitDirection, ratio: number) => void;
   updateSplitRatio: (splitId: string, ratio: number) => void;
   selectSplit: (splitId?: string) => void;
   deleteSelectedSplit: () => void;
   equalizeSelectedSplit: () => void;
+  toggleLayoutLeafSelection: (leafId: string) => void;
+  clearLayoutLeafSelection: () => void;
+  equalizeSelectedLeaves: (axis: EqualizeAxis) => EqualizeLeavesResult;
   resetLayout: () => void;
   enterCollageEditor: () => void;
   returnToLayoutEditor: () => void;
   addPhotos: (photos: PhotoAsset[]) => void;
   removePhotoAsset: (photoId: string) => void;
+  clearPhotoAssets: () => void;
   selectCell: (cellId?: string) => void;
   placePhoto: (cellId: string, photoId: string) => void;
   removePlacement: (cellId: string) => void;
@@ -44,10 +57,30 @@ type CollageStore = {
 function initialLayout(): LayoutState {
   return {
     root: createRootLeaf(),
-    gap: 16,
+    gap: 24,
     padding: 16,
-    aspectRatio: "1:1",
+    aspectRatio: { kind: "preset", value: "1:1" },
   };
+}
+
+function reclampPlacements(
+  layout: LayoutState,
+  photos: PhotoAsset[],
+  placements: Record<string, PhotoPlacement | undefined>,
+  canvasRect: Rect,
+): Record<string, PhotoPlacement | undefined> {
+  const rects = new Map(
+    getRenderableLeafRects(layout, canvasRect, getPreviewSpacingScale(canvasRect, layout.aspectRatio))
+      .map(({ id, rect }) => [id, rect]),
+  );
+  const photoMap = new Map(photos.map((photo) => [photo.id, photo]));
+  return Object.fromEntries(Object.entries(placements).map(([cellId, placement]) => {
+    if (!placement) return [cellId, placement];
+    const photo = photoMap.get(placement.photoId);
+    const rect = rects.get(cellId);
+    if (!photo || !rect) return [cellId, placement];
+    return [cellId, { ...placement, ...clampOffset(placement.offsetX, placement.offsetY, photo, rect, placement.scale) }];
+  }));
 }
 
 export const useCollageStore = create<CollageStore>((set) => ({
@@ -55,6 +88,7 @@ export const useCollageStore = create<CollageStore>((set) => ({
   layout: initialLayout(),
   photos: [],
   placements: {},
+  selectedLayoutLeafIds: [],
   setGap: (gap) =>
     set((state) => ({
       layout: { ...state.layout, gap },
@@ -63,6 +97,11 @@ export const useCollageStore = create<CollageStore>((set) => ({
     set((state) => ({
       layout: { ...state.layout, padding },
     })),
+  setSpacing: (gap, padding, canvasRect) =>
+    set((state) => {
+      const layout = { ...state.layout, gap, padding };
+      return { layout, placements: reclampPlacements(layout, state.photos, state.placements, canvasRect) };
+    }),
   setAspectRatio: (aspectRatio) =>
     set((state) => ({
       layout: { ...state.layout, aspectRatio },
@@ -74,6 +113,7 @@ export const useCollageStore = create<CollageStore>((set) => ({
         root: splitLeaf(state.layout.root, leafId, direction, ratio),
       },
       selectedSplitId: undefined,
+      selectedLayoutLeafIds: [],
     })),
   updateSplitRatio: (splitId, ratio) =>
     set((state) => ({
@@ -82,7 +122,11 @@ export const useCollageStore = create<CollageStore>((set) => ({
         root: updateSplitRatio(state.layout.root, splitId, ratio),
       },
     })),
-  selectSplit: (splitId) => set({ selectedSplitId: splitId }),
+  selectSplit: (splitId) => set({
+    selectedSplitId: splitId,
+    selectedCellId: undefined,
+    selectedLayoutLeafIds: [],
+  }),
   deleteSelectedSplit: () =>
     set((state) => {
       if (!state.selectedSplitId) {
@@ -95,6 +139,7 @@ export const useCollageStore = create<CollageStore>((set) => ({
           root: removeSplit(state.layout.root, state.selectedSplitId),
         },
         selectedSplitId: undefined,
+        selectedLayoutLeafIds: [],
       };
     }),
   equalizeSelectedSplit: () =>
@@ -110,6 +155,19 @@ export const useCollageStore = create<CollageStore>((set) => ({
         },
       };
     }),
+  toggleLayoutLeafSelection: (leafId) => set((state) => ({
+    selectedSplitId: undefined,
+    selectedLayoutLeafIds: state.selectedLayoutLeafIds.includes(leafId)
+      ? state.selectedLayoutLeafIds.filter((id) => id !== leafId)
+      : [...state.selectedLayoutLeafIds, leafId],
+  })),
+  clearLayoutLeafSelection: () => set({ selectedLayoutLeafIds: [] }),
+  equalizeSelectedLeaves: (axis) => {
+    const state = useCollageStore.getState();
+    const result = solveEqualizeSelectedLeaves(state.layout.root, new Set(state.selectedLayoutLeafIds), axis);
+    if (result.ok) set({ layout: { ...state.layout, root: result.root } });
+    return result;
+  },
   resetLayout: () =>
     set((state) => ({
       layout: {
@@ -119,6 +177,7 @@ export const useCollageStore = create<CollageStore>((set) => ({
       placements: {},
       selectedSplitId: undefined,
       selectedCellId: undefined,
+      selectedLayoutLeafIds: [],
     })),
   enterCollageEditor: () =>
     set({
@@ -126,6 +185,7 @@ export const useCollageStore = create<CollageStore>((set) => ({
       placements: {},
       selectedSplitId: undefined,
       selectedCellId: undefined,
+      selectedLayoutLeafIds: [],
     }),
   returnToLayoutEditor: () =>
     set({
@@ -133,6 +193,7 @@ export const useCollageStore = create<CollageStore>((set) => ({
       placements: {},
       selectedSplitId: undefined,
       selectedCellId: undefined,
+      selectedLayoutLeafIds: [],
     }),
   addPhotos: (photos) =>
     set((state) => ({
@@ -143,19 +204,30 @@ export const useCollageStore = create<CollageStore>((set) => ({
       const nextPlacements = Object.fromEntries(
         Object.entries(state.placements).filter(([, placement]) => placement?.photoId !== photoId),
       );
+      const removedSources = new Set(
+        state.photos.filter((photo) => photo.id === photoId).map((photo) => photo.src),
+      );
+      const photos = state.photos.filter((photo) => photo.id !== photoId);
+      const retainedSources = new Set(photos.map((photo) => photo.src));
+      for (const src of removedSources) {
+        if (!retainedSources.has(src)) URL.revokeObjectURL(src);
+      }
 
       return {
-        photos: state.photos.filter((photo) => {
-          if (photo.id === photoId) {
-            URL.revokeObjectURL(photo.src);
-            return false;
-          }
-          return true;
-        }),
+        photos,
         placements: nextPlacements,
       };
     }),
-  selectCell: (cellId) => set({ selectedCellId: cellId }),
+  clearPhotoAssets: () =>
+    set((state) => {
+      for (const src of new Set(state.photos.map((photo) => photo.src))) URL.revokeObjectURL(src);
+      return { photos: [], placements: {} };
+    }),
+  selectCell: (cellId) => set({
+    selectedCellId: cellId,
+    selectedSplitId: undefined,
+    selectedLayoutLeafIds: [],
+  }),
   placePhoto: (cellId, photoId) =>
     set((state) => ({
       placements: {

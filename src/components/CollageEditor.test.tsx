@@ -1,0 +1,47 @@
+import { fireEvent, render, screen } from "@testing-library/react";
+import "@testing-library/jest-dom/vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { ReactNode } from "react";
+
+vi.mock("react-konva", () => ({
+  Stage: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
+  Layer: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
+  Group: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
+  Rect: () => null,
+  Image: () => null,
+}));
+vi.mock("../hooks/useElementSize", () => ({
+  useElementSize: () => ({ ref: { current: null }, size: { width: 800, height: 600 } }),
+  useLoadedImage: () => undefined,
+}));
+vi.mock("../lib/export", () => ({ exportCollage: vi.fn(() => Promise.resolve()) }));
+
+import { CollageEditor } from "./CollageEditor";
+import { useCollageStore } from "../store/useCollageStore";
+
+const photos = [
+  { id: "a", src: "blob:a", fileName: "a.jpg", width: 10, height: 10, mimeType: "image/jpeg" },
+  { id: "b", src: "blob:b", fileName: "b.jpg", width: 10, height: 10, mimeType: "image/jpeg" },
+];
+
+describe("CollageEditor photo clearing", () => {
+  beforeEach(() => {
+    useCollageStore.setState({ photos, placements: {} });
+    Object.defineProperty(URL, "revokeObjectURL", { configurable: true, value: vi.fn() });
+  });
+
+  it("includes the count and placements warning, and cancellation preserves photos", () => {
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    render(<CollageEditor onImportFiles={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: "Clear All" }));
+    expect(confirm).toHaveBeenCalledWith("Clear all 2 photos? Cell placements will also be cleared.");
+    expect(useCollageStore.getState().photos).toHaveLength(2);
+  });
+
+  it("clears all photos after confirmation", () => {
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    render(<CollageEditor onImportFiles={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: "Clear All" }));
+    expect(useCollageStore.getState().photos).toEqual([]);
+  });
+});
