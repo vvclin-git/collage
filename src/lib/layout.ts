@@ -38,8 +38,59 @@ export type EqualizeLeavesResult =
   | { ok: true; root: CollageNode; changedSplitIds: string[] }
   | { ok: false; reason: EqualizeFailureReason };
 
+export type WeightedLinearLayoutFailureReason = "empty-weights" | "invalid-weight";
+export type WeightedLinearLayoutResult =
+  | { ok: true; root: CollageNode; leafIds: string[] }
+  | { ok: false; reason: WeightedLinearLayoutFailureReason };
+
 export function createRootLeaf(): CollageNode {
   return { id: createId("leaf"), type: "leaf" };
+}
+
+export function createWeightedLinearLayout(
+  weights: readonly number[],
+  direction: SplitDirection,
+): WeightedLinearLayoutResult {
+  if (weights.length === 0) {
+    return { ok: false, reason: "empty-weights" };
+  }
+
+  if (weights.some((weight) => !Number.isFinite(weight) || weight <= 0)) {
+    return { ok: false, reason: "invalid-weight" };
+  }
+
+  // Normalizing avoids overflow when otherwise-valid finite weights are very large.
+  const maximumWeight = Math.max(...weights);
+  const normalizedWeights = weights.map((weight) => weight / maximumWeight);
+  const leafIds: string[] = [];
+
+  function build(start: number, end: number): CollageNode {
+    if (end - start === 1) {
+      const leaf = createRootLeaf();
+      leafIds.push(leaf.id);
+      return leaf;
+    }
+
+    // Partition by count so the tree remains balanced while each subtree covers
+    // one contiguous range of the original visual order.
+    const midpoint = start + Math.floor((end - start) / 2);
+    const leftWeight = normalizedWeights
+      .slice(start, midpoint)
+      .reduce((sum, weight) => sum + weight, 0);
+    const rightWeight = normalizedWeights
+      .slice(midpoint, end)
+      .reduce((sum, weight) => sum + weight, 0);
+
+    return {
+      id: createId("split"),
+      type: "split",
+      direction,
+      ratio: clampRatio(leftWeight / (leftWeight + rightWeight)),
+      children: [build(start, midpoint), build(midpoint, end)],
+    };
+  }
+
+  return { ok: true, root: build(0, weights.length), leafIds };
 }
 
 export function clampRatio(ratio: number): number {

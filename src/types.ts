@@ -1,4 +1,13 @@
-export type AppMode = "layout" | "collage";
+export type WorkflowStep =
+  | "start"
+  | "choose-layout"
+  | "manual-aspect"
+  | "manual-layout"
+  | "edit-collage";
+
+export type ManualAspectOrigin = "choose-layout" | "edit-collage";
+
+export type AutoLayoutKind = "horizontal" | "vertical";
 
 export type AspectRatioPreset = "1:1" | "4:5" | "5:4" | "3:4" | "4:3" | "16:9" | "9:16";
 
@@ -43,7 +52,8 @@ export type PhotoPlacement = {
 };
 
 export type AppState = {
-  mode: AppMode;
+  workflowStep: WorkflowStep;
+  manualAspectOrigin?: ManualAspectOrigin;
   layout: LayoutState;
   photos: PhotoAsset[];
   placements: Record<string, PhotoPlacement | undefined>;

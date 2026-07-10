@@ -1,9 +1,14 @@
 import { useEffect, useState } from "react";
 import type { AspectRatio, AspectRatioPreset } from "../types";
+import { AdvancedSpacingControls } from "./AdvancedSpacingControls";
 
 export type CollageInteractionMode = "photo" | "adjust";
 
 const presets: AspectRatioPreset[] = ["1:1", "4:5", "5:4", "3:4", "4:3", "16:9", "9:16"];
+
+function formatAspectValue(value: number): string {
+  return String(Number(value.toFixed(4)));
+}
 
 type LayoutControlsProps = {
   aspectRatio: AspectRatio;
@@ -17,16 +22,16 @@ type LayoutControlsProps = {
 };
 
 export function LayoutControls({ aspectRatio, canDeleteSplit, selectedCellCount, onAspectRatioChange, onDeleteSplit, onEqualize, onReset, onNext }: LayoutControlsProps) {
-  const [customWidth, setCustomWidth] = useState(aspectRatio.kind === "custom" ? String(aspectRatio.width) : "1");
-  const [customHeight, setCustomHeight] = useState(aspectRatio.kind === "custom" ? String(aspectRatio.height) : "1");
+  const [customWidth, setCustomWidth] = useState(aspectRatio.kind === "custom" ? formatAspectValue(aspectRatio.width) : "1");
+  const [customHeight, setCustomHeight] = useState(aspectRatio.kind === "custom" ? formatAspectValue(aspectRatio.height) : "1");
   const [selectedValue, setSelectedValue] = useState<AspectRatioPreset | "custom">(
     aspectRatio.kind === "preset" ? aspectRatio.value : "custom",
   );
   useEffect(() => {
     setSelectedValue(aspectRatio.kind === "preset" ? aspectRatio.value : "custom");
     if (aspectRatio.kind === "custom") {
-      setCustomWidth(String(aspectRatio.width));
-      setCustomHeight(String(aspectRatio.height));
+      setCustomWidth(formatAspectValue(aspectRatio.width));
+      setCustomHeight(formatAspectValue(aspectRatio.height));
     }
   }, [aspectRatio]);
   const width = Number(customWidth);
@@ -66,19 +71,18 @@ export function LayoutControls({ aspectRatio, canDeleteSplit, selectedCellCount,
 }
 
 type CollageControlsProps = {
-  canRemovePhoto: boolean; canZoomPhoto: boolean; interactionMode: CollageInteractionMode; isExporting: boolean;
+  canZoomPhoto: boolean; interactionMode: CollageInteractionMode; isExporting: boolean;
   zoomScale: number; gap: number; padding: number;
   onImportFiles: (files: FileList) => void; onToggleInteractionMode: () => void; onZoomChange: (scale: number) => void;
-  onSpacingChange: (gap: number, padding: number) => void; onRemovePhoto: () => void; onEditLayout: () => void; onExport: () => void;
+  onSpacingChange: (gap: number, padding: number) => void; onExport: () => void;
 };
 
-export function CollageControls({ canRemovePhoto, canZoomPhoto, interactionMode, isExporting, zoomScale, gap, padding, onImportFiles, onToggleInteractionMode, onZoomChange, onSpacingChange, onRemovePhoto, onEditLayout, onExport }: CollageControlsProps) {
+export function CollageControls({ canZoomPhoto, interactionMode, isExporting, zoomScale, gap, padding, onImportFiles, onToggleInteractionMode, onZoomChange, onSpacingChange, onExport }: CollageControlsProps) {
   return <section className="control-panel compact" aria-label="Collage controls">
-    <label className="file-button">Import Photos<input type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={(event) => { if (event.target.files) onImportFiles(event.target.files); event.target.value = ""; }} /></label>
-    <button type="button" className={interactionMode === "adjust" ? "mode-toggle is-active" : "mode-toggle"} onClick={onToggleInteractionMode}>{interactionMode === "adjust" ? "Photo Editing" : "Adjust Layout"}</button>
-    <label>Gap <strong>{gap}px</strong><input type="range" min="0" max="64" value={gap} onChange={(e) => onSpacingChange(Number(e.target.value), padding)} /></label>
-    <label>Padding <strong>{padding}px</strong><input type="range" min="0" max="128" value={padding} onChange={(e) => onSpacingChange(gap, Number(e.target.value))} /></label>
-    <label>Zoom <strong>{zoomScale.toFixed(2)}x</strong><input type="range" min="1" max="4" step="0.01" value={zoomScale} disabled={!canZoomPhoto || interactionMode === "adjust"} onChange={(e) => onZoomChange(Number(e.target.value))} /></label>
-    <div className="button-row"><button type="button" className="secondary" onClick={onEditLayout}>Edit Layout</button><button type="button" className="secondary" onClick={onRemovePhoto} disabled={!canRemovePhoto}>Remove Photo</button><button type="button" onClick={onExport} disabled={isExporting}>{isExporting ? "Exporting..." : "Export PNG"}</button></div>
+    <label className={isExporting ? "file-button is-disabled" : "file-button"}>Import Photos<input type="file" accept="image/jpeg,image/png,image/webp" multiple disabled={isExporting} onChange={(event) => { if (event.target.files) onImportFiles(event.target.files); event.target.value = ""; }} /></label>
+    <button type="button" disabled={isExporting} className={interactionMode === "adjust" ? "mode-toggle is-active" : "mode-toggle"} onClick={onToggleInteractionMode}>{interactionMode === "adjust" ? "Photo Editing" : "Adjust Layout"}</button>
+    <AdvancedSpacingControls gap={gap} padding={padding} onChange={onSpacingChange} disabled={isExporting} />
+    {canZoomPhoto ? <label>Zoom <strong>{zoomScale.toFixed(2)}x</strong><input type="range" min="1" max="4" step="0.01" value={zoomScale} disabled={isExporting || interactionMode === "adjust"} onChange={(e) => onZoomChange(Number(e.target.value))} /></label> : null}
+    <div className="button-row"><button type="button" onClick={onExport} disabled={isExporting}>{isExporting ? "Exporting..." : "Export PNG"}</button></div>
   </section>;
 }

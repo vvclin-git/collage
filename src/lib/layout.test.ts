@@ -3,6 +3,7 @@ import type { CollageNode, LayoutState } from "../types";
 import {
   aspectRatioValue,
   clampRatio,
+  createWeightedLinearLayout,
   getPreviewSpacingScale,
   equalizeSplitChildren,
   equalizeSelectedLeaves,
@@ -17,6 +18,82 @@ import {
 const root: CollageNode = { id: "root", type: "leaf" };
 
 describe("layout engine", () => {
+  describe("weighted linear layouts", () => {
+    it("creates one leaf for one weight", () => {
+      const result = createWeightedLinearLayout([3], "vertical");
+
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.root).toEqual({ id: result.leafIds[0], type: "leaf" });
+      expect(result.leafIds).toHaveLength(1);
+    });
+
+    it("creates a proportional two-cell split", () => {
+      const result = createWeightedLinearLayout([1, 3], "vertical");
+
+      expect(result.ok).toBe(true);
+      if (!result.ok || result.root.type !== "split") return;
+      expect(result.root.direction).toBe("vertical");
+      expect(result.root.ratio).toBe(0.25);
+    });
+
+    it("uses subtree weight sums for a balanced three-cell tree", () => {
+      const result = createWeightedLinearLayout([1, 2, 3], "horizontal");
+
+      expect(result.ok).toBe(true);
+      if (!result.ok || result.root.type !== "split") return;
+      expect(result.root.direction).toBe("horizontal");
+      expect(result.root.ratio).toBeCloseTo(1 / 6);
+      expect(result.root.children[1].type).toBe("split");
+      if (result.root.children[1].type !== "split") return;
+      expect(result.root.children[1].ratio).toBeCloseTo(2 / 5);
+    });
+
+    it("keeps seven-photo partitions balanced and contiguous", () => {
+      const result = createWeightedLinearLayout([1, 1, 1, 1, 1, 1, 1], "vertical");
+
+      expect(result.ok).toBe(true);
+      if (!result.ok || result.root.type !== "split") return;
+      expect(result.root.ratio).toBeCloseTo(3 / 7);
+      expect(layoutNode(result.root, { x: 0, y: 0, width: 700, height: 100 }).map(({ rect }) => rect.width)).toEqual(
+        Array(7).fill(100),
+      );
+    });
+
+    it("clamps extreme subtree ratios deterministically", () => {
+      const first = createWeightedLinearLayout([1e-300, 1e300], "vertical");
+      const second = createWeightedLinearLayout([1e-300, 1e300], "vertical");
+
+      expect(first.ok).toBe(true);
+      expect(second.ok).toBe(true);
+      if (!first.ok || !second.ok || first.root.type !== "split" || second.root.type !== "split") return;
+      expect(first.root.ratio).toBe(0.15);
+      expect(second.root.ratio).toBe(0.15);
+    });
+
+    it.each([
+      { weights: [], reason: "empty-weights" },
+      { weights: [0], reason: "invalid-weight" },
+      { weights: [-1], reason: "invalid-weight" },
+      { weights: [Number.NaN], reason: "invalid-weight" },
+      { weights: [Number.POSITIVE_INFINITY], reason: "invalid-weight" },
+    ] as const)("rejects $reason input $weights", ({ weights, reason }) => {
+      expect(createWeightedLinearLayout(weights, "vertical")).toEqual({ ok: false, reason });
+    });
+
+    it("returns leaf IDs in visual order for either direction", () => {
+      for (const direction of ["vertical", "horizontal"] as const) {
+        const result = createWeightedLinearLayout([7, 1, 4, 2, 8, 3, 5], direction);
+        expect(result.ok).toBe(true);
+        if (!result.ok) continue;
+        expect(layoutNode(result.root, { x: 0, y: 0, width: 100, height: 100 }).map(({ id }) => id)).toEqual(
+          result.leafIds,
+        );
+        expect(new Set(result.leafIds).size).toBe(7);
+      }
+    });
+  });
+
   it("returns one rect for a leaf node", () => {
     expect(layoutNode(root, { x: 0, y: 0, width: 100, height: 80 })).toEqual([
       { id: "root", rect: { x: 0, y: 0, width: 100, height: 80 } },

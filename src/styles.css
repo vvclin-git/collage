@@ -166,6 +166,141 @@ button:disabled {
   width: 100%;
 }
 
+button:focus-visible,
+select:focus-visible,
+input:focus-visible {
+  outline: 3px solid #f0a23a;
+  outline-offset: 2px;
+}
+
+.workflow-screen {
+  width: min(100%, 980px);
+  margin: 0 auto;
+  display: grid;
+  gap: 16px;
+}
+
+.start-screen {
+  justify-items: center;
+  align-content: start;
+}
+
+.empty-canvas-preview {
+  width: 100%;
+  min-height: clamp(260px, 48vh, 520px);
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 10px;
+  border: 2px dashed #9e9588;
+  border-radius: 10px;
+  background: #fbf8f1;
+  color: #5c6770;
+  text-align: center;
+  padding: 24px;
+}
+
+.empty-canvas-preview p { margin: 0; }
+.empty-preview-icon { font-size: 3rem; line-height: 1; }
+.workflow-import-button { min-width: min(100%, 230px); min-height: 48px; }
+.workflow-error { margin: 0; color: #9b2c2c; }
+
+.workflow-panel {
+  min-width: 0;
+  border: 1px solid #c6baaa;
+  border-radius: 8px;
+  background: #fbf8f1;
+  padding: 16px;
+}
+
+.workflow-panel h2 { margin: 0 0 12px; font-size: 1rem; }
+.workflow-panel-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.workflow-panel-header h2 { margin: 0; }
+
+.workflow-photo-list {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding-top: 12px;
+  min-height: 102px;
+}
+
+.workflow-photo {
+  position: relative;
+  flex: 0 0 96px;
+  margin: 0;
+  padding: 5px;
+  border: 1px solid #c8c0b5;
+  border-radius: 6px;
+  background: #fff;
+}
+
+.workflow-photo img { display: block; width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 4px; }
+.workflow-photo figcaption { overflow: hidden; margin-top: 4px; text-overflow: ellipsis; white-space: nowrap; font-size: .75rem; }
+.layout-option-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+
+.layout-option-card {
+  min-width: 0;
+  min-height: 92px;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid #b9afa0;
+  background: #fff;
+  color: #26323d;
+  text-align: center;
+}
+
+.layout-option-card > span:last-child { color: #62707b; font-size: .83rem; }
+.layout-option-icon { width: 52px; height: 34px; display: grid; border: 2px solid currentColor; }
+.layout-option-icon i { border-color: currentColor; border-style: solid; }
+.layout-option-icon.is-horizontal { grid-template-columns: repeat(3, 1fr); }
+.layout-option-icon.is-horizontal i { border-width: 0 1px 0 0; }
+.layout-option-icon.is-vertical { grid-template-rows: repeat(3, 1fr); }
+.layout-option-icon.is-vertical i { border-width: 0 0 1px; }
+.layout-option-icon.is-manual { grid-template-columns: 1fr 1fr; }
+.layout-option-icon.is-manual i { border-width: 0 1px 1px 0; }
+.workflow-clear { justify-self: start; }
+
+.manual-aspect-panel { width: min(100%, 420px); margin: 0 auto; display: grid; gap: 16px; }
+.manual-aspect-panel label { display: grid; gap: 8px; font-weight: 700; color: #4d5963; }
+.manual-aspect-panel select, .manual-aspect-panel input { width: 100%; min-height: 44px; }
+.icon-button { min-width: 44px; min-height: 44px; padding: 0; background: transparent; color: #26323d; font-size: 1.5rem; }
+
+.advanced-spacing { border: 1px solid #c8c0b5; border-radius: 6px; background: #fff; }
+.advanced-toggle { width: 100%; display: flex; align-items: center; justify-content: space-between; line-height: 1; background: transparent; color: #26323d; }
+.advanced-spacing-fields { display: grid; gap: 14px; padding: 4px 14px 14px; }
+
+.visually-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+/* Fine-tune adds a layout chooser beneath the canvas and tray. */
+.workspace > .workflow-panel {
+  grid-column: 1;
+  grid-row: 3;
+}
+
+.layout-options-disclosure .layout-option-grid { margin-top: 12px; }
+
+.workspace:has(> .workflow-panel) {
+  grid-template-rows: minmax(360px, 1fr) auto auto;
+}
+
+.workspace:has(> .workflow-panel) > .control-panel {
+  grid-row: 1 / span 3;
+}
+
 .custom-aspect { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .custom-aspect button, .custom-aspect .field-error { grid-column: 1 / -1; }
 .field-error { color: #9b2c2c; font-size: 0.85rem; }
@@ -192,6 +327,11 @@ button:disabled {
   block-size: 1px;
   opacity: 0;
   pointer-events: none;
+}
+
+.file-button.is-disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
 }
 
 .photo-tray {
@@ -327,7 +467,8 @@ button:disabled {
 
   .control-panel,
   .control-panel.compact,
-  .photo-tray {
+  .photo-tray,
+  .workspace > .workflow-panel {
     grid-column: 1;
     grid-row: auto;
   }
@@ -362,4 +503,13 @@ button:disabled {
     align-items: flex-start;
     flex-direction: column;
   }
+
+  .workspace:has(> .workflow-panel) > .control-panel {
+    grid-row: auto;
+  }
+
+  .layout-option-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .layout-option-card { min-height: 82px; padding: 8px 4px; }
+  .layout-option-icon { width: 42px; height: 28px; }
+  .workflow-panel-header { align-items: flex-start; }
 }
