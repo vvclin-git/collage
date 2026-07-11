@@ -272,6 +272,8 @@ input:focus-visible {
 .advanced-spacing { border: 1px solid #c8c0b5; border-radius: 6px; background: #fff; }
 .advanced-toggle { width: 100%; display: flex; align-items: center; justify-content: space-between; line-height: 1; background: transparent; color: #26323d; }
 .advanced-spacing-fields { display: grid; gap: 14px; padding: 4px 14px 14px; }
+.spacing-label-row { display: flex; align-items: baseline; gap: 6px; }
+.mobile-export-label { display: none; }
 
 .visually-hidden {
   position: absolute !important;
@@ -543,9 +545,19 @@ input:focus-visible {
   }
 
   .workspace {
+    flex: 0 0 auto;
+    align-content: start;
     gap: 8px;
     grid-template-rows: auto auto auto auto;
   }
+
+  .workspace:has(> .workflow-panel) {
+    grid-template-rows: auto auto auto auto;
+  }
+
+  .workspace > .photo-tray { grid-row: 2; }
+  .workspace > .layout-options-disclosure { grid-row: 3; }
+  .workspace > .fine-tune-tools { grid-row: 4; }
 
   .canvas-shell {
     height: clamp(220px, 38vh, 320px);
@@ -683,6 +695,11 @@ input:focus-visible {
     padding: 4px 8px 8px;
   }
 
+  .fine-tune-tools .advanced-spacing-fields label,
+  .fine-tune-tools .spacing-label-row {
+    font-size: 14px;
+  }
+
   .fine-tune-tools .export-row {
     display: block;
   }
@@ -690,6 +707,9 @@ input:focus-visible {
   .fine-tune-tools .export-action {
     width: 100%;
   }
+
+  .desktop-export-label { display: none; }
+  .mobile-export-label { display: inline; }
 
   .workspace:has(> .workflow-panel) > .control-panel {
     grid-row: auto;

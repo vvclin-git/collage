@@ -83,6 +83,6 @@ export function CollageControls({ canZoomPhoto, interactionMode, isExporting, zo
     <button type="button" disabled={isExporting} className={interactionMode === "adjust" ? "mode-toggle is-active" : "mode-toggle"} onClick={onToggleInteractionMode}>{interactionMode === "adjust" ? "Photo Editing" : "Adjust Layout"}</button>
     <AdvancedSpacingControls gap={gap} padding={padding} onChange={onSpacingChange} disabled={isExporting} />
     {canZoomPhoto ? <label>Zoom <strong>{zoomScale.toFixed(2)}x</strong><input type="range" min="1" max="4" step="0.01" value={zoomScale} disabled={isExporting || interactionMode === "adjust"} onChange={(e) => onZoomChange(Number(e.target.value))} /></label> : null}
-    <div className="button-row export-row"><button className="export-action" type="button" onClick={onExport} disabled={isExporting}>{isExporting ? "Exporting..." : "Export PNG"}</button></div>
+    <div className="button-row export-row"><button className="export-action" type="button" onClick={onExport} disabled={isExporting}>{isExporting ? "Exporting..." : <><span className="desktop-export-label">Export PNG</span><span className="mobile-export-label">Export</span></>}</button></div>
   </section>;
 }

@@ -43,4 +43,10 @@ describe("workflow presentation", () => {
     fireEvent.click(screen.getByRole("button", { name: "Close aspect ratio panel" }));
     expect(onClose).toHaveBeenCalledOnce();
   });
+
+  it("rounds initial custom aspect fields to four decimal places", () => {
+    render(<ManualAspectPanel initialValue={{ kind: "custom", width: 0.5916666666666666, height: 1.23456789 }} onApply={vi.fn()} onClose={vi.fn()} />);
+    expect(screen.getByLabelText("Width")).toHaveValue(0.5917);
+    expect(screen.getByLabelText("Height")).toHaveValue(1.2346);
+  });
 });

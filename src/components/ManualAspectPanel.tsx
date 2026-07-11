@@ -3,6 +3,10 @@ import type { AspectRatio, AspectRatioPreset } from "../types";
 
 const presets: AspectRatioPreset[] = ["1:1", "4:5", "5:4", "3:4", "4:3", "16:9", "9:16"];
 
+function formatAspectValue(value: number): string {
+  return String(Number(value.toFixed(4)));
+}
+
 export type ManualAspectPanelProps = {
   initialValue: AspectRatio;
   onApply: (aspect: AspectRatio) => void;
@@ -11,8 +15,8 @@ export type ManualAspectPanelProps = {
 
 export function ManualAspectPanel({ initialValue, onApply, onClose }: ManualAspectPanelProps) {
   const [selection, setSelection] = useState<AspectRatioPreset | "custom">(initialValue.kind === "preset" ? initialValue.value : "custom");
-  const [widthDraft, setWidthDraft] = useState(initialValue.kind === "custom" ? String(initialValue.width) : "1");
-  const [heightDraft, setHeightDraft] = useState(initialValue.kind === "custom" ? String(initialValue.height) : "1");
+  const [widthDraft, setWidthDraft] = useState(initialValue.kind === "custom" ? formatAspectValue(initialValue.width) : "1");
+  const [heightDraft, setHeightDraft] = useState(initialValue.kind === "custom" ? formatAspectValue(initialValue.height) : "1");
   const width = Number(widthDraft);
   const height = Number(heightDraft);
   const ratio = width / height;
