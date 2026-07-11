@@ -405,6 +405,7 @@ export function CollageEditor({ onImportFiles }: CollageEditorProps) {
         onClearAll={() => {
           if (window.confirm(`Clear all ${photos.length} photos? The collage layout and placements will be reset.`)) clearAllAndReset();
         }}
+        onImportFiles={onImportFiles}
         onPickPhoto={(photoId) => {
           if (selectedCellId) {
             placePhoto(selectedCellId, photoId);

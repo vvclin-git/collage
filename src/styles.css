@@ -431,6 +431,37 @@ input:focus-visible {
   opacity: 0.72;
 }
 
+.mobile-import-action {
+  display: none;
+}
+
+.tray-add {
+  position: relative;
+  flex: 0 0 92px;
+  min-height: 86px;
+  place-items: center;
+  border: 1px dashed #9e9588;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #26323d;
+  cursor: pointer;
+  font-size: 2rem;
+  font-weight: 500;
+}
+
+.tray-add input {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.tray-add.is-disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
 .empty-tray {
   display: grid;
   place-items: center;
@@ -487,29 +518,186 @@ input:focus-visible {
 }
 
 @media (max-width: 520px) {
+  .app {
+    padding: 8px;
+    gap: 8px;
+  }
+
   .topbar {
-    flex-direction: column;
+    flex-direction: row;
+    align-items: center;
+    min-height: 36px;
+    gap: 8px;
+  }
+
+  .topbar h1 {
+    font-size: 1.25rem;
+  }
+
+  .topbar p {
+    display: none;
   }
 
   .mode-pill {
-    align-self: flex-start;
+    display: none;
+  }
+
+  .workspace {
+    gap: 8px;
+    grid-template-rows: auto auto auto auto;
   }
 
   .canvas-shell {
+    height: clamp(220px, 38vh, 320px);
+    padding: 4px;
+  }
+
+  .choose-layout-screen {
+    gap: 8px;
+  }
+
+  .choose-layout-screen .empty-canvas-preview {
+    min-height: clamp(220px, 32vh, 270px);
+    padding: 12px;
+  }
+
+  .choose-layout-screen .workflow-photo figcaption {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    padding: 0 !important;
+    margin: -1px !important;
+    overflow: hidden !important;
+    clip: rect(0, 0, 0, 0) !important;
+    white-space: nowrap !important;
+    border: 0 !important;
+  }
+
+  .choose-layout-screen .workflow-photo-list {
+    min-height: 78px;
+  }
+
+  .choose-layout-screen .workflow-photo {
+    flex-basis: 72px;
+  }
+
+  .stage-host {
+    height: 100%;
+    min-height: 0;
+  }
+
+  .workflow-panel,
+  .photo-tray,
+  .control-panel {
     padding: 8px;
   }
 
+  .layout-options-disclosure .advanced-toggle {
+    min-height: 36px;
+    padding: 0 8px;
+  }
+
   .tray-header {
-    align-items: flex-start;
-    flex-direction: column;
+    align-items: center;
+    flex-direction: row;
+    margin-bottom: 6px;
+  }
+
+  .tray-header span {
+    display: none;
+  }
+
+  .tray-clear {
+    min-height: 30px;
+    padding: 0 9px;
+    font-size: 0.8rem;
+  }
+
+  .tray-list {
+    gap: 6px;
+    min-height: 68px;
+  }
+
+  .tray-photo,
+  .tray-add {
+    flex-basis: 64px;
+    min-height: 64px;
+    padding: 3px;
+  }
+
+  .tray-photo > span {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    padding: 0 !important;
+    margin: -1px !important;
+    overflow: hidden !important;
+    clip: rect(0, 0, 0, 0) !important;
+    white-space: nowrap !important;
+    border: 0 !important;
+  }
+
+  .tray-remove {
+    top: 1px;
+    right: 1px;
+    width: 22px;
+    height: 22px;
+    min-height: 22px;
+  }
+
+  .mobile-import-action {
+    display: grid;
+  }
+
+  .desktop-import-action {
+    display: none !important;
+  }
+
+  .fine-tune-tools {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .fine-tune-tools > .mode-toggle,
+  .fine-tune-tools > .advanced-spacing,
+  .fine-tune-tools > .export-row {
+    min-width: 0;
+  }
+
+  .fine-tune-tools > .mode-toggle,
+  .fine-tune-tools .advanced-toggle,
+  .fine-tune-tools .export-action {
+    min-height: 38px;
+    padding: 0 6px;
+    font-size: 0.78rem;
+  }
+
+  .fine-tune-tools > label:not(.desktop-import-action),
+  .fine-tune-tools > .advanced-spacing:has(.advanced-spacing-fields) {
+    grid-column: 1 / -1;
+  }
+
+  .fine-tune-tools .advanced-spacing-fields {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    padding: 4px 8px 8px;
+  }
+
+  .fine-tune-tools .export-row {
+    display: block;
+  }
+
+  .fine-tune-tools .export-action {
+    width: 100%;
   }
 
   .workspace:has(> .workflow-panel) > .control-panel {
     grid-row: auto;
   }
 
-  .layout-option-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
-  .layout-option-card { min-height: 82px; padding: 8px 4px; }
-  .layout-option-icon { width: 42px; height: 28px; }
+  .layout-options-disclosure .layout-option-grid { margin-top: 6px; }
+  .layout-option-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+  .layout-option-card { min-height: 66px; padding: 5px 3px; gap: 4px; font-size: 0.78rem; }
+  .layout-option-icon { width: 36px; height: 24px; }
   .workflow-panel-header { align-items: flex-start; }
 }

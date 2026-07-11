@@ -7,6 +7,7 @@ type PhotoTrayProps = {
   selectedCellId?: string;
   isExporting: boolean;
   onClearAll: () => void;
+  onImportFiles: (files: FileList) => void;
   onPickPhoto: (photoId: string) => void;
   onRemovePhoto: (photoId: string) => void;
 };
@@ -18,6 +19,7 @@ export function PhotoTray({
   selectedCellId,
   isExporting,
   onClearAll,
+  onImportFiles,
   onPickPhoto,
   onRemovePhoto,
 }: PhotoTrayProps) {
@@ -78,6 +80,21 @@ export function PhotoTray({
             </div>
           ))
         )}
+        <label className={isExporting ? "tray-add mobile-import-action is-disabled" : "tray-add mobile-import-action"}>
+          <span aria-hidden="true">+</span>
+          <span className="visually-hidden">Add photos</span>
+          <input
+            type="file"
+            aria-label="Add photos"
+            accept="image/jpeg,image/png,image/webp"
+            multiple
+            disabled={isExporting}
+            onChange={(event) => {
+              if (event.target.files) onImportFiles(event.target.files);
+              event.target.value = "";
+            }}
+          />
+        </label>
       </div>
     </section>
   );
