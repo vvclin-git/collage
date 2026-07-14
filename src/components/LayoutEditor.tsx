@@ -30,7 +30,8 @@ export function LayoutEditor() {
   const toggleLayoutLeafSelection = useCollageStore((state) => state.toggleLayoutLeafSelection);
   const equalizeSelectedLeaves = useCollageStore((state) => state.equalizeSelectedLeaves);
   const resetLayout = useCollageStore((state) => state.resetLayout);
-  const enterCollageEditor = useCollageStore((state) => state.enterCollageEditor);
+  const cancelManualLayout = useCollageStore((state) => state.cancelManualLayout);
+  const finishManualLayout = useCollageStore((state) => state.finishManualLayout);
   const dragStartRef = useRef<{ leafId: string; point: Point } | undefined>(undefined);
 
   const stageRect = useMemo(
@@ -217,8 +218,11 @@ export function LayoutEditor() {
             resetLayout();
           }
         }}
-        onNext={enterCollageEditor}
+        onNext={finishManualLayout}
       />
+      <button type="button" className="secondary" onClick={cancelManualLayout}>
+        Back
+      </button>
     </div>
   );
 }

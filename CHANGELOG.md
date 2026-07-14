@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.0
+
+- Reworked the app into a photo-first workflow: import photos, choose a generated or Manual layout, then fine-tune the collage.
+- Added photo-aspect-weighted Horizontal and Vertical layout generation with automatic photo placement.
+- Added a Manual aspect-selection step with common presets and validated custom ratios before layout drawing.
+- Added Horizontal, Vertical, and Manual rebuild options to the fine-tuning screen.
+- Reset stale layout structure and placements whenever the imported photo set changes.
+- Added a full Clear action that revokes local photo resources and returns the app to its start state.
+- Improved import validation and kept all imported-photo handling local to the browser.
+
 ## 0.2.0
 
 - Fixed pinch zoom by tracking native touch pointers on the canvas host instead of relying on Konva stage touch events.

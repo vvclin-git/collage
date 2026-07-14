@@ -3,6 +3,7 @@ import type Konva from "konva";
 import { useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { CollageControls, type CollageInteractionMode } from "./Toolbar";
 import { PhotoTray } from "./PhotoTray";
+import { LayoutOptionCard } from "./LayoutOptionCard";
 import { useElementSize, useLoadedImage } from "../hooks/useElementSize";
 import { exportCollage } from "../lib/export";
 import {
@@ -113,15 +114,16 @@ export function CollageEditor({ onImportFiles }: CollageEditorProps) {
   const selectedCellId = useCollageStore((state) => state.selectedCellId);
   const selectCell = useCollageStore((state) => state.selectCell);
   const placePhoto = useCollageStore((state) => state.placePhoto);
-  const removePlacement = useCollageStore((state) => state.removePlacement);
   const removePhotoAsset = useCollageStore((state) => state.removePhotoAsset);
-  const clearPhotoAssets = useCollageStore((state) => state.clearPhotoAssets);
+  const clearAllAndReset = useCollageStore((state) => state.clearAllAndReset);
+  const applyAutoLayout = useCollageStore((state) => state.applyAutoLayout);
+  const openManualAspect = useCollageStore((state) => state.openManualAspect);
   const setSpacing = useCollageStore((state) => state.setSpacing);
   const updatePlacement = useCollageStore((state) => state.updatePlacement);
   const updateSplitRatio = useCollageStore((state) => state.updateSplitRatio);
-  const returnToLayoutEditor = useCollageStore((state) => state.returnToLayoutEditor);
   const [isExporting, setIsExporting] = useState(false);
   const [interactionMode, setInteractionMode] = useState<CollageInteractionMode>("photo");
+  const [areLayoutOptionsOpen, setAreLayoutOptionsOpen] = useState(false);
   const pinchRef = useRef<{ distance: number; cellId: string } | undefined>(undefined);
   const activePointersRef = useRef(new Map<number, Point>());
 
@@ -378,6 +380,21 @@ export function CollageEditor({ onImportFiles }: CollageEditorProps) {
         </div>
       </section>
 
+      <section className="workflow-panel layout-options-disclosure" aria-label="Layout options">
+        <button type="button" className="advanced-toggle" aria-expanded={areLayoutOptionsOpen} onClick={() => setAreLayoutOptionsOpen((open) => !open)}>
+          <span>Layout Options</span><span aria-hidden="true">⌄</span>
+        </button>
+        {areLayoutOptionsOpen ? <div className="layout-option-grid">
+          <LayoutOptionCard kind="horizontal" title="Horizontal" disabled={isExporting} onSelect={() => {
+            if (window.confirm("Rebuild this collage as a horizontal layout? Your current layout adjustments will be replaced.")) applyAutoLayout("horizontal");
+          }} />
+          <LayoutOptionCard kind="vertical" title="Vertical" disabled={isExporting} onSelect={() => {
+            if (window.confirm("Rebuild this collage as a vertical layout? Your current layout adjustments will be replaced.")) applyAutoLayout("vertical");
+          }} />
+          <LayoutOptionCard kind="manual" title="Manual" disabled={isExporting} onSelect={() => openManualAspect("edit-collage")} />
+        </div> : null}
+      </section>
+
       <PhotoTray
         photos={trayPhotos}
         photoCount={photos.length}
@@ -386,8 +403,9 @@ export function CollageEditor({ onImportFiles }: CollageEditorProps) {
         selectedCellId={selectedCellId}
         onRemovePhoto={removePhotoAsset}
         onClearAll={() => {
-          if (window.confirm(`Clear all ${photos.length} photos? Cell placements will also be cleared.`)) clearPhotoAssets();
+          if (window.confirm(`Clear all ${photos.length} photos? The collage layout and placements will be reset.`)) clearAllAndReset();
         }}
+        onImportFiles={onImportFiles}
         onPickPhoto={(photoId) => {
           if (selectedCellId) {
             placePhoto(selectedCellId, photoId);
@@ -396,7 +414,6 @@ export function CollageEditor({ onImportFiles }: CollageEditorProps) {
       />
 
       <CollageControls
-        canRemovePhoto={Boolean(selectedCellId && selectedPlacement)}
         canZoomPhoto={Boolean(selectedCellId && selectedPlacement) && !isAdjustMode}
         interactionMode={interactionMode}
         isExporting={isExporting}
@@ -414,12 +431,6 @@ export function CollageEditor({ onImportFiles }: CollageEditorProps) {
           }
         }}
         onSpacingChange={(gap, padding) => setSpacing(gap, padding, canvasRect)}
-        onRemovePhoto={() => {
-          if (selectedCellId) {
-            removePlacement(selectedCellId);
-          }
-        }}
-        onEditLayout={returnToLayoutEditor}
         onExport={() => {
           setIsExporting(true);
           exportCollage(snapshotAppState())

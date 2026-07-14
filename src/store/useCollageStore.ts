@@ -1,15 +1,18 @@
 import { create } from "zustand";
 import type {
-  AppMode,
+  AutoLayoutKind,
   AspectRatio,
   LayoutState,
+  ManualAspectOrigin,
   PhotoAsset,
   PhotoPlacement,
   Rect,
   SplitDirection,
+  WorkflowStep,
 } from "../types";
 import {
   createRootLeaf,
+  createWeightedLinearLayout,
   equalizeSelectedLeaves as solveEqualizeSelectedLeaves,
   type EqualizeAxis,
   type EqualizeLeavesResult,
@@ -22,8 +25,9 @@ import {
 } from "../lib/layout";
 import { clampOffset } from "../lib/photos";
 
-type CollageStore = {
-  mode: AppMode;
+export type CollageStore = {
+  workflowStep: WorkflowStep;
+  manualAspectOrigin?: ManualAspectOrigin;
   layout: LayoutState;
   photos: PhotoAsset[];
   placements: Record<string, PhotoPlacement | undefined>;
@@ -43,11 +47,16 @@ type CollageStore = {
   clearLayoutLeafSelection: () => void;
   equalizeSelectedLeaves: (axis: EqualizeAxis) => EqualizeLeavesResult;
   resetLayout: () => void;
-  enterCollageEditor: () => void;
-  returnToLayoutEditor: () => void;
-  addPhotos: (photos: PhotoAsset[]) => void;
+  importPhotoAssets: (photos: PhotoAsset[]) => void;
   removePhotoAsset: (photoId: string) => void;
-  clearPhotoAssets: () => void;
+  openManualAspect: (origin: ManualAspectOrigin) => void;
+  cancelManualAspect: () => void;
+  startManualLayout: (aspectRatio: AspectRatio) => void;
+  cancelManualLayout: () => void;
+  finishManualLayout: () => void;
+  applyAutoLayout: (kind: AutoLayoutKind) => void;
+  invalidateLayoutForPhotoSetChange: () => void;
+  clearAllAndReset: () => void;
   selectCell: (cellId?: string) => void;
   placePhoto: (cellId: string, photoId: string) => void;
   removePlacement: (cellId: string) => void;
@@ -84,7 +93,8 @@ function reclampPlacements(
 }
 
 export const useCollageStore = create<CollageStore>((set) => ({
-  mode: "layout",
+  workflowStep: "start",
+  manualAspectOrigin: undefined,
   layout: initialLayout(),
   photos: [],
   placements: {},
@@ -179,34 +189,26 @@ export const useCollageStore = create<CollageStore>((set) => ({
       selectedCellId: undefined,
       selectedLayoutLeafIds: [],
     })),
-  enterCollageEditor: () =>
-    set({
-      mode: "collage",
-      placements: {},
-      selectedSplitId: undefined,
-      selectedCellId: undefined,
-      selectedLayoutLeafIds: [],
+  importPhotoAssets: (photos) =>
+    set((state) => {
+      if (photos.length === 0) return state;
+      return {
+        photos: [...state.photos, ...photos],
+        layout: { ...state.layout, root: createRootLeaf() },
+        placements: {},
+        selectedSplitId: undefined,
+        selectedCellId: undefined,
+        selectedLayoutLeafIds: [],
+        workflowStep: "choose-layout",
+        manualAspectOrigin: undefined,
+      };
     }),
-  returnToLayoutEditor: () =>
-    set({
-      mode: "layout",
-      placements: {},
-      selectedSplitId: undefined,
-      selectedCellId: undefined,
-      selectedLayoutLeafIds: [],
-    }),
-  addPhotos: (photos) =>
-    set((state) => ({
-      photos: [...state.photos, ...photos],
-    })),
   removePhotoAsset: (photoId) =>
     set((state) => {
-      const nextPlacements = Object.fromEntries(
-        Object.entries(state.placements).filter(([, placement]) => placement?.photoId !== photoId),
-      );
       const removedSources = new Set(
         state.photos.filter((photo) => photo.id === photoId).map((photo) => photo.src),
       );
+      if (removedSources.size === 0) return state;
       const photos = state.photos.filter((photo) => photo.id !== photoId);
       const retainedSources = new Set(photos.map((photo) => photo.src));
       for (const src of removedSources) {
@@ -215,13 +217,110 @@ export const useCollageStore = create<CollageStore>((set) => ({
 
       return {
         photos,
-        placements: nextPlacements,
+        layout: { ...state.layout, root: createRootLeaf() },
+        placements: {},
+        selectedSplitId: undefined,
+        selectedCellId: undefined,
+        selectedLayoutLeafIds: [],
+        workflowStep: "choose-layout",
+        manualAspectOrigin: undefined,
       };
     }),
-  clearPhotoAssets: () =>
+  openManualAspect: (origin) => set({ workflowStep: "manual-aspect", manualAspectOrigin: origin }),
+  cancelManualAspect: () =>
+    set((state) => ({
+      workflowStep: state.manualAspectOrigin ?? "choose-layout",
+      manualAspectOrigin: undefined,
+    })),
+  startManualLayout: (aspectRatio) =>
+    set((state) => ({
+      layout: { ...state.layout, root: createRootLeaf(), aspectRatio },
+      placements: {},
+      selectedSplitId: undefined,
+      selectedCellId: undefined,
+      selectedLayoutLeafIds: [],
+      workflowStep: "manual-layout",
+      manualAspectOrigin: undefined,
+    })),
+  cancelManualLayout: () =>
+    set((state) => ({
+      layout: { ...state.layout, root: createRootLeaf() },
+      placements: {},
+      selectedSplitId: undefined,
+      selectedCellId: undefined,
+      selectedLayoutLeafIds: [],
+      workflowStep: "choose-layout",
+      manualAspectOrigin: undefined,
+    })),
+  finishManualLayout: () => set({
+    workflowStep: "edit-collage",
+    manualAspectOrigin: undefined,
+    selectedSplitId: undefined,
+    selectedCellId: undefined,
+    selectedLayoutLeafIds: [],
+  }),
+  applyAutoLayout: (kind) =>
+    set((state) => {
+      const weights = state.photos.map((photo) =>
+        kind === "horizontal" ? photo.width / photo.height : photo.height / photo.width,
+      );
+      const generated = createWeightedLinearLayout(
+        weights,
+        kind === "horizontal" ? "vertical" : "horizontal",
+      );
+      if (!generated.ok) return state;
+
+      const rawAspect = kind === "horizontal"
+        ? weights.reduce((sum, weight) => sum + weight, 0)
+        : 1 / weights.reduce((sum, weight) => sum + weight, 0);
+      const canvasAspect = Math.min(10, Math.max(0.1, rawAspect));
+      if (!Number.isFinite(canvasAspect)) return state;
+
+      if (generated.leafIds.length !== state.photos.length) return state;
+      const placements: Record<string, PhotoPlacement> = {};
+      for (let index = 0; index < state.photos.length; index += 1) {
+        const photo = state.photos[index];
+        const leafId = generated.leafIds[index];
+        if (!photo || !leafId) return state;
+        placements[leafId] = { photoId: photo.id, scale: 1, offsetX: 0, offsetY: 0 };
+      }
+      return {
+        layout: {
+          ...state.layout,
+          root: generated.root,
+          aspectRatio: { kind: "custom", width: canvasAspect, height: 1 },
+        },
+        placements,
+        selectedSplitId: undefined,
+        selectedCellId: undefined,
+        selectedLayoutLeafIds: [],
+        workflowStep: "edit-collage",
+        manualAspectOrigin: undefined,
+      };
+    }),
+  invalidateLayoutForPhotoSetChange: () =>
+    set((state) => ({
+      layout: { ...state.layout, root: createRootLeaf() },
+      placements: {},
+      selectedSplitId: undefined,
+      selectedCellId: undefined,
+      selectedLayoutLeafIds: [],
+      workflowStep: "choose-layout",
+      manualAspectOrigin: undefined,
+    })),
+  clearAllAndReset: () =>
     set((state) => {
       for (const src of new Set(state.photos.map((photo) => photo.src))) URL.revokeObjectURL(src);
-      return { photos: [], placements: {} };
+      return {
+        workflowStep: "start",
+        manualAspectOrigin: undefined,
+        layout: initialLayout(),
+        photos: [],
+        placements: {},
+        selectedSplitId: undefined,
+        selectedCellId: undefined,
+        selectedLayoutLeafIds: [],
+      };
     }),
   selectCell: (cellId) => set({
     selectedCellId: cellId,
@@ -260,7 +359,8 @@ export const useCollageStore = create<CollageStore>((set) => ({
 export function snapshotAppState() {
   const state = useCollageStore.getState();
   return {
-    mode: state.mode,
+    workflowStep: state.workflowStep,
+    manualAspectOrigin: state.manualAspectOrigin,
     layout: state.layout,
     photos: state.photos,
     placements: state.placements,

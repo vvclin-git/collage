@@ -26,7 +26,7 @@ const photos = [
 
 describe("CollageEditor photo clearing", () => {
   beforeEach(() => {
-    useCollageStore.setState({ photos, placements: {} });
+    useCollageStore.setState({ workflowStep: "edit-collage", photos, placements: {} });
     Object.defineProperty(URL, "revokeObjectURL", { configurable: true, value: vi.fn() });
   });
 
@@ -34,7 +34,7 @@ describe("CollageEditor photo clearing", () => {
     const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
     render(<CollageEditor onImportFiles={vi.fn()} />);
     fireEvent.click(screen.getByRole("button", { name: "Clear All" }));
-    expect(confirm).toHaveBeenCalledWith("Clear all 2 photos? Cell placements will also be cleared.");
+    expect(confirm).toHaveBeenCalledWith("Clear all 2 photos? The collage layout and placements will be reset.");
     expect(useCollageStore.getState().photos).toHaveLength(2);
   });
 
@@ -43,5 +43,25 @@ describe("CollageEditor photo clearing", () => {
     render(<CollageEditor onImportFiles={vi.fn()} />);
     fireEvent.click(screen.getByRole("button", { name: "Clear All" }));
     expect(useCollageStore.getState().photos).toEqual([]);
+    expect(useCollageStore.getState().workflowStep).toBe("start");
+  });
+
+  it("keeps layout replacement controls folded until requested", () => {
+    render(<CollageEditor onImportFiles={vi.fn()} />);
+    const disclosure = screen.getByRole("button", { name: "Layout Options" });
+    expect(disclosure).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByRole("button", { name: "Horizontal" })).not.toBeInTheDocument();
+    fireEvent.click(disclosure);
+    expect(screen.getByRole("button", { name: "Horizontal" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Vertical" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Manual" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Edit Layout" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Remove Photo" })).not.toBeInTheDocument();
+  });
+
+  it("removing a photo invalidates the layout and returns to layout choice", () => {
+    render(<CollageEditor onImportFiles={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: "Remove a.jpg" }));
+    expect(useCollageStore.getState()).toMatchObject({ workflowStep: "choose-layout", photos: [photos[1]], placements: {} });
   });
 });

@@ -1,21 +1,82 @@
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
+import { ChooseLayoutScreen } from "./components/ChooseLayoutScreen";
 import { CollageEditor } from "./components/CollageEditor";
+import { EmptyCanvasPreview } from "./components/EmptyCanvasPreview";
 import { LayoutEditor } from "./components/LayoutEditor";
+import { ManualAspectPanel } from "./components/ManualAspectPanel";
+import { WorkflowStartScreen } from "./components/WorkflowStartScreen";
+import { createPhotoAssets, type PhotoImportRejection } from "./lib/photoAssets";
 import { useCollageStore } from "./store/useCollageStore";
-import { createPhotoAssets } from "./lib/photoAssets";
+
+function describeRejections(rejections: PhotoImportRejection[]): string | undefined {
+  if (rejections.length === 0) return undefined;
+  const names = rejections.map(({ file }) => file.name).join(", ");
+  return `${rejections.length === 1 ? "One file was not imported" : `${rejections.length} files were not imported`}: ${names}. Use valid JPG, PNG, or WebP images.`;
+}
 
 export function App() {
-  const mode = useCollageStore((state) => state.mode);
-  const addPhotos = useCollageStore((state) => state.addPhotos);
+  const workflowStep = useCollageStore((state) => state.workflowStep);
+  const photos = useCollageStore((state) => state.photos);
+  const aspectRatio = useCollageStore((state) => state.layout.aspectRatio);
+  const importPhotoAssets = useCollageStore((state) => state.importPhotoAssets);
+  const removePhotoAsset = useCollageStore((state) => state.removePhotoAsset);
+  const clearAllAndReset = useCollageStore((state) => state.clearAllAndReset);
+  const applyAutoLayout = useCollageStore((state) => state.applyAutoLayout);
+  const openManualAspect = useCollageStore((state) => state.openManualAspect);
+  const cancelManualAspect = useCollageStore((state) => state.cancelManualAspect);
+  const startManualLayout = useCollageStore((state) => state.startManualLayout);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDraggingFiles, setIsDraggingFiles] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+  const [importError, setImportError] = useState<string>();
 
-  const importFiles = useCallback(
-    async (files: FileList | File[]) => {
-      const assets = await createPhotoAssets(Array.from(files));
-      addPhotos(assets);
-    },
-    [addPhotos],
-  );
+  const importFiles = useCallback(async (files: FileList | File[]) => {
+    if (files.length === 0) return;
+    setIsImporting(true);
+    try {
+      const result = await createPhotoAssets(Array.from(files));
+      setImportError(describeRejections(result.rejections));
+      if (result.assets.length > 0) importPhotoAssets(result.assets);
+    } finally {
+      setIsImporting(false);
+    }
+  }, [importPhotoAssets]);
+
+  const openFilePicker = () => fileInputRef.current?.click();
+
+  let content;
+  switch (workflowStep) {
+    case "start":
+      content = <WorkflowStartScreen onImport={openFilePicker} isImporting={isImporting} />;
+      break;
+    case "choose-layout":
+      content = (
+        <ChooseLayoutScreen
+          photos={photos}
+          onImport={openFilePicker}
+          onRemovePhoto={removePhotoAsset}
+          onClear={clearAllAndReset}
+          onSelectHorizontal={() => applyAutoLayout("horizontal")}
+          onSelectVertical={() => applyAutoLayout("vertical")}
+          onSelectManual={() => openManualAspect("choose-layout")}
+        />
+      );
+      break;
+    case "manual-aspect":
+      content = (
+        <main className="workflow-screen manual-aspect-screen">
+          <EmptyCanvasPreview message="Choose the canvas shape for your manual layout" />
+          <ManualAspectPanel initialValue={aspectRatio} onApply={startManualLayout} onClose={cancelManualAspect} />
+        </main>
+      );
+      break;
+    case "manual-layout":
+      content = <LayoutEditor />;
+      break;
+    case "edit-collage":
+      content = <CollageEditor onImportFiles={importFiles} />;
+      break;
+  }
 
   return (
     <main
@@ -27,9 +88,7 @@ export function App() {
         }
       }}
       onDragLeave={(event) => {
-        if (event.currentTarget === event.target) {
-          setIsDraggingFiles(false);
-        }
+        if (event.currentTarget === event.target) setIsDraggingFiles(false);
       }}
       onDrop={(event) => {
         if (event.dataTransfer.files.length > 0) {
@@ -40,19 +99,25 @@ export function App() {
       }}
     >
       <header className="topbar">
-        <div>
-          <h1>Photo Collage</h1>
-          <p>Photos stay on your device.</p>
-        </div>
-        <div className="mode-pill">{mode === "layout" ? "Layout" : "Collage"}</div>
+        <div><h1>Photo Collage</h1><p>Photos stay on your device.</p></div>
+        <div className="mode-pill">{workflowStep.replaceAll("-", " ")}</div>
       </header>
 
-      {mode === "layout" ? (
-        <LayoutEditor />
-      ) : (
-        <CollageEditor onImportFiles={importFiles} />
-      )}
-
+      <input
+        ref={fileInputRef}
+        hidden
+        className="visually-hidden"
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        multiple
+        aria-label="Choose photos"
+        onChange={(event) => {
+          if (event.target.files) void importFiles(event.target.files);
+          event.target.value = "";
+        }}
+      />
+      {content}
+      {importError ? <p className="workflow-error" role="alert">{importError}</p> : null}
       {isDraggingFiles ? <div className="drop-overlay">Drop photos to import</div> : null}
     </main>
   );

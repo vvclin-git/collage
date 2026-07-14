@@ -4,7 +4,8 @@ import { useCollageStore } from "./useCollageStore";
 describe("collage store", () => {
   beforeEach(() => {
     useCollageStore.setState({
-      mode: "layout",
+      workflowStep: "start",
+      manualAspectOrigin: undefined,
       layout: {
         root: { id: "root", type: "leaf" },
         gap: 24,
@@ -19,8 +20,13 @@ describe("collage store", () => {
     });
   });
 
-  it("clears placements when entering collage editor", () => {
+  it("imports photos and invalidates an existing layout atomically", () => {
     useCollageStore.setState({
+      workflowStep: "edit-collage",
+      layout: {
+        ...useCollageStore.getState().layout,
+        root: { id: "split", type: "split", direction: "vertical", ratio: 0.5, children: [{ id: "a", type: "leaf" }, { id: "b", type: "leaf" }] },
+      },
       photos: [
         {
           id: "photo-1",
@@ -31,26 +37,123 @@ describe("collage store", () => {
           mimeType: "image/jpeg",
         },
       ],
-      placements: { root: { photoId: "photo-1", scale: 2, offsetX: 4, offsetY: 5 } },
+      placements: { a: { photoId: "photo-1", scale: 2, offsetX: 4, offsetY: 5 } },
+      selectedSplitId: "split",
+      selectedCellId: "a",
+      selectedLayoutLeafIds: ["a"],
     });
 
-    useCollageStore.getState().enterCollageEditor();
+    useCollageStore.getState().importPhotoAssets([{ id: "photo-2", src: "blob:two", fileName: "two.jpg", width: 200, height: 100, mimeType: "image/jpeg" }]);
 
-    expect(useCollageStore.getState().mode).toBe("collage");
-    expect(useCollageStore.getState().photos).toHaveLength(1);
-    expect(useCollageStore.getState().placements).toEqual({});
+    expect(useCollageStore.getState()).toMatchObject({
+      workflowStep: "choose-layout",
+      photos: [{ id: "photo-1" }, { id: "photo-2" }],
+      placements: {},
+      selectedLayoutLeafIds: [],
+      layout: { root: { type: "leaf" }, gap: 24, padding: 16 },
+    });
+    expect(useCollageStore.getState().selectedSplitId).toBeUndefined();
+    expect(useCollageStore.getState().selectedCellId).toBeUndefined();
   });
 
-  it("clears placements when returning to layout editor", () => {
+  it("opens and cancels manual aspect without mutating the collage", () => {
+    useCollageStore.setState({ workflowStep: "edit-collage", placements: { root: { photoId: "photo-1", scale: 2, offsetX: 4, offsetY: 5 } } });
+    const layout = useCollageStore.getState().layout;
+    useCollageStore.getState().openManualAspect("edit-collage");
+    expect(useCollageStore.getState()).toMatchObject({ workflowStep: "manual-aspect", manualAspectOrigin: "edit-collage", layout, placements: { root: { photoId: "photo-1" } } });
+    useCollageStore.getState().cancelManualAspect();
+    expect(useCollageStore.getState()).toMatchObject({ workflowStep: "edit-collage", layout, placements: { root: { photoId: "photo-1" } } });
+    expect(useCollageStore.getState().manualAspectOrigin).toBeUndefined();
+  });
+
+  it("starts manual layout destructively and finishes without clearing placements", () => {
+    const aspectRatio = { kind: "preset", value: "4:5" } as const;
+    useCollageStore.setState({ workflowStep: "manual-aspect", placements: { stale: { photoId: "photo-1", scale: 1, offsetX: 0, offsetY: 0 } } });
+    useCollageStore.getState().startManualLayout(aspectRatio);
+    expect(useCollageStore.getState()).toMatchObject({ workflowStep: "manual-layout", placements: {}, layout: { aspectRatio, root: { type: "leaf" } } });
+    useCollageStore.getState().placePhoto("root", "photo-1");
+    useCollageStore.getState().finishManualLayout();
+    expect(useCollageStore.getState()).toMatchObject({ workflowStep: "edit-collage", placements: { root: { photoId: "photo-1" } } });
+  });
+
+  it("invalidates topology and selections while preserving photos, spacing, and aspect", () => {
+    const photos = [{ id: "photo-1", src: "blob:one", fileName: "one.jpg", width: 100, height: 200, mimeType: "image/jpeg" }];
     useCollageStore.setState({
-      mode: "collage",
-      placements: { root: { photoId: "photo-1", scale: 2, offsetX: 4, offsetY: 5 } },
+      workflowStep: "edit-collage",
+      photos,
+      layout: { root: { id: "split", type: "split", direction: "horizontal", ratio: 0.5, children: [{ id: "a", type: "leaf" }, { id: "b", type: "leaf" }] }, gap: 7, padding: 9, aspectRatio: { kind: "preset", value: "9:16" } },
+      placements: { a: { photoId: "photo-1", scale: 1, offsetX: 0, offsetY: 0 } },
+      selectedSplitId: "split",
+      selectedCellId: "a",
+      selectedLayoutLeafIds: ["a"],
+    });
+    useCollageStore.getState().invalidateLayoutForPhotoSetChange();
+    const state = useCollageStore.getState();
+    expect(state).toMatchObject({ workflowStep: "choose-layout", photos, placements: {}, selectedLayoutLeafIds: [], layout: { root: { type: "leaf" }, gap: 7, padding: 9, aspectRatio: { kind: "preset", value: "9:16" } } });
+    expect(state.selectedSplitId).toBeUndefined();
+    expect(state.selectedCellId).toBeUndefined();
+  });
+
+  it("applies a horizontal layout with proportional widths and ordered placements", () => {
+    useCollageStore.setState({
+      workflowStep: "choose-layout",
+      photos: [
+        { id: "wide", src: "blob:wide", fileName: "wide.jpg", width: 1600, height: 900, mimeType: "image/jpeg" },
+        { id: "square", src: "blob:square", fileName: "square.jpg", width: 1000, height: 1000, mimeType: "image/jpeg" },
+        { id: "tall", src: "blob:tall", fileName: "tall.jpg", width: 900, height: 1600, mimeType: "image/jpeg" },
+      ],
+      selectedSplitId: "old-split",
+      selectedCellId: "old-cell",
+      selectedLayoutLeafIds: ["old-cell"],
+    });
+    useCollageStore.getState().applyAutoLayout("horizontal");
+    const state = useCollageStore.getState();
+    expect(state.workflowStep).toBe("edit-collage");
+    expect(state.layout.aspectRatio).toEqual({ kind: "custom", width: 1600 / 900 + 1 + 900 / 1600, height: 1 });
+    expect(state.layout.root).toMatchObject({ type: "split", direction: "vertical" });
+    const placementPhotoIds = Object.values(state.placements).map((placement) => placement?.photoId);
+    expect(placementPhotoIds).toEqual(["wide", "square", "tall"]);
+    expect(Object.values(state.placements)).toEqual(Object.values(state.placements).map((placement) => ({ ...placement, scale: 1, offsetX: 0, offsetY: 0 })));
+    expect(state.selectedSplitId).toBeUndefined();
+    expect(state.selectedCellId).toBeUndefined();
+    expect(state.selectedLayoutLeafIds).toEqual([]);
+  });
+
+  it("applies a vertical layout and clamps generated canvas aspect to the supported range", () => {
+    useCollageStore.setState({
+      workflowStep: "choose-layout",
+      photos: [
+        { id: "one", src: "blob:one", fileName: "one.jpg", width: 1000, height: 100, mimeType: "image/jpeg" },
+        { id: "two", src: "blob:two", fileName: "two.jpg", width: 1000, height: 100, mimeType: "image/jpeg" },
+      ],
+    });
+    useCollageStore.getState().applyAutoLayout("vertical");
+    expect(useCollageStore.getState().layout).toMatchObject({
+      aspectRatio: { kind: "custom", width: 5, height: 1 },
+      root: { type: "split", direction: "horizontal", ratio: 0.5 },
     });
 
-    useCollageStore.getState().returnToLayoutEditor();
+    useCollageStore.setState({ photos: [{ id: "extreme", src: "blob:extreme", fileName: "extreme.jpg", width: 1, height: 1000, mimeType: "image/jpeg" }] });
+    useCollageStore.getState().applyAutoLayout("vertical");
+    expect(useCollageStore.getState().layout.aspectRatio).toEqual({ kind: "custom", width: 0.1, height: 1 });
 
-    expect(useCollageStore.getState().mode).toBe("layout");
-    expect(useCollageStore.getState().placements).toEqual({});
+    useCollageStore.getState().applyAutoLayout("horizontal");
+    expect(useCollageStore.getState().layout.aspectRatio).toEqual({ kind: "custom", width: 0.1, height: 1 });
+
+    useCollageStore.setState({ photos: [{ id: "panorama", src: "blob:panorama", fileName: "panorama.jpg", width: 1000, height: 1, mimeType: "image/jpeg" }] });
+    useCollageStore.getState().applyAutoLayout("horizontal");
+    expect(useCollageStore.getState().layout.aspectRatio).toEqual({ kind: "custom", width: 10, height: 1 });
+  });
+
+  it("leaves state unchanged when auto-layout input is empty or invalid", () => {
+    const beforeEmpty = useCollageStore.getState();
+    useCollageStore.getState().applyAutoLayout("horizontal");
+    expect(useCollageStore.getState()).toBe(beforeEmpty);
+
+    useCollageStore.setState({ photos: [{ id: "bad", src: "blob:bad", fileName: "bad.jpg", width: 100, height: 0, mimeType: "image/jpeg" }] });
+    const beforeInvalid = useCollageStore.getState();
+    useCollageStore.getState().applyAutoLayout("horizontal");
+    expect(useCollageStore.getState()).toBe(beforeInvalid);
   });
 
   it("allows the same photo to be placed in multiple cells", () => {
@@ -86,7 +189,7 @@ describe("collage store", () => {
 
     expect(revoke).toHaveBeenCalledWith("blob:test");
     expect(useCollageStore.getState().photos).toEqual([]);
-    expect(useCollageStore.getState().placements).toEqual({});
+    expect(useCollageStore.getState()).toMatchObject({ workflowStep: "choose-layout", placements: {}, layout: { root: { type: "leaf" } } });
     revoke.mockRestore();
   });
 
@@ -202,19 +305,20 @@ describe("collage store", () => {
     expect(state.placements.root?.offsetY).toBeLessThan(9999);
   });
 
-  it("clears all assets atomically, revoking each distinct URL once while preserving layout and selected cell", () => {
+  it("clears all assets atomically, revoking each distinct URL once and restoring defaults", () => {
     const revoke = vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => undefined);
-    const layout = useCollageStore.getState().layout;
     const base = { fileName: "photo.jpg", width: 100, height: 100, mimeType: "image/jpeg" };
     useCollageStore.setState({
       photos: [{ ...base, id: "one", src: "blob:shared" }, { ...base, id: "two", src: "blob:shared" }],
       placements: { root: { photoId: "one", scale: 1, offsetX: 0, offsetY: 0 } },
       selectedCellId: "root",
     });
-    useCollageStore.getState().clearPhotoAssets();
+    useCollageStore.setState({ workflowStep: "edit-collage", layout: { ...useCollageStore.getState().layout, gap: 2, padding: 3, aspectRatio: { kind: "preset", value: "16:9" } } });
+    useCollageStore.getState().clearAllAndReset();
     expect(revoke).toHaveBeenCalledTimes(1);
     expect(revoke).toHaveBeenCalledWith("blob:shared");
-    expect(useCollageStore.getState()).toMatchObject({ photos: [], placements: {}, layout, selectedCellId: "root" });
+    expect(useCollageStore.getState()).toMatchObject({ workflowStep: "start", photos: [], placements: {}, selectedLayoutLeafIds: [], layout: { root: { type: "leaf" }, gap: 24, padding: 16, aspectRatio: { kind: "preset", value: "1:1" } } });
+    expect(useCollageStore.getState().selectedCellId).toBeUndefined();
     revoke.mockRestore();
   });
 });
