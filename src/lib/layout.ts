@@ -27,6 +27,12 @@ export type SplitGesture = {
   ratio: number;
 };
 
+export type RemoveSplitResult = {
+  root: CollageNode;
+  retainedLeafId?: string;
+  removedLeafIds: string[];
+};
+
 export type EqualizeAxis = "width" | "height";
 export type EqualizeFailureReason =
   | "insufficient-selection"
@@ -393,7 +399,7 @@ export function splitLeaf(
       direction,
       ratio: clampRatio(ratio),
       children: [
-        { id: createId("leaf"), type: "leaf" },
+        { id: node.id, type: "leaf" },
         { id: createId("leaf"), type: "leaf" },
       ],
     };
@@ -408,22 +414,44 @@ export function splitLeaf(
   };
 }
 
-export function removeSplit(node: CollageNode, splitId: string): CollageNode {
-  if (node.type === "leaf") {
-    return node;
-  }
+function visualLeafIds(node: CollageNode): string[] {
+  return node.type === "leaf" ? [node.id] : [...visualLeafIds(node.children[0]), ...visualLeafIds(node.children[1])];
+}
 
+export function getCanonicalCanvasRect(aspectRatio: AspectRatio, size = DEFAULT_EXPORT_SIZE): Rect {
+  const ratio = aspectRatioValue(aspectRatio);
+  return ratio >= 1
+    ? { x: 0, y: 0, width: size, height: size / ratio }
+    : { x: 0, y: 0, width: size * ratio, height: size };
+}
+
+export function removeSplitWithMetadata(
+  node: CollageNode,
+  splitId: string,
+  assignedLeafIds: ReadonlySet<string> = new Set(),
+): RemoveSplitResult {
+  if (node.type === "leaf") return { root: node, removedLeafIds: [] };
   if (node.id === splitId) {
-    return createRootLeaf();
+    const leaves = visualLeafIds(node);
+    const retainedLeafId = leaves.find((id) => assignedLeafIds.has(id)) ?? leaves[0];
+    return {
+      root: { id: retainedLeafId!, type: "leaf" },
+      retainedLeafId,
+      removedLeafIds: leaves.filter((id) => id !== retainedLeafId),
+    };
   }
-
+  const first = removeSplitWithMetadata(node.children[0], splitId, assignedLeafIds);
+  const second = removeSplitWithMetadata(node.children[1], splitId, assignedLeafIds);
+  if (!first.retainedLeafId && !second.retainedLeafId) return { root: { ...node, children: [first.root, second.root] }, removedLeafIds: [] };
   return {
-    ...node,
-    children: [
-      removeSplit(node.children[0], splitId),
-      removeSplit(node.children[1], splitId),
-    ],
+    root: { ...node, children: [first.root, second.root] },
+    retainedLeafId: first.retainedLeafId ?? second.retainedLeafId,
+    removedLeafIds: [...first.removedLeafIds, ...second.removedLeafIds],
   };
+}
+
+export function removeSplit(node: CollageNode, splitId: string): CollageNode {
+  return removeSplitWithMetadata(node, splitId).root;
 }
 
 export function updateSplitRatio(

@@ -1,6 +1,6 @@
 import type { AppState, PhotoAsset, Rect } from "../types";
 import { aspectRatioValue, getRenderableLeafRects } from "./layout";
-import { getCoverTransform } from "./photos";
+import { getPlacementTransform } from "./photos";
 
 export type ExportOptions = {
   size?: number;
@@ -98,17 +98,13 @@ export async function exportCollage(
       loadedImages.set(photo.id, image);
     }
 
-    const cover = getCoverTransform(photo, leaf.rect);
-    const width = cover.width * placement.scale;
-    const height = cover.height * placement.scale;
-    const x = leaf.rect.x + (leaf.rect.width - width) / 2 + placement.offsetX;
-    const y = leaf.rect.y + (leaf.rect.height - height) / 2 + placement.offsetY;
+    const transform = getPlacementTransform(photo, placement, rect);
 
     context.save();
     context.beginPath();
     context.rect(leaf.rect.x, leaf.rect.y, leaf.rect.width, leaf.rect.height);
     context.clip();
-    context.drawImage(image, x, y, width, height);
+    context.drawImage(image, transform.x, transform.y, transform.width, transform.height);
     context.restore();
   }
 

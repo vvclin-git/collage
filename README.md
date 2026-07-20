@@ -20,18 +20,18 @@ Photo Collage is a browser-based editor for creating custom photo collages and e
    - **Vertical** places the photos top to bottom.
    - **Manual** lets you choose the canvas aspect before drawing your own layout.
 3. **Fine-tune the result.** Select a cell and choose a tray photo, or drag a photo into the cell. Drag a placed photo to pan it; use pinch zoom or the zoom control to scale it.
-4. **Adjust the structure when needed.** In a Manual layout, drag in an empty cell to create a divider. Select cells to equalize widths or heights when applicable. In the collage editor, use **Adjust Layout** to move existing dividers without changing the stored photo transforms.
+4. **Adjust the structure when needed.** After any layout is open in the collage editor, switch to **Adjust Layout** to select or drag dividers, swipe a cell to split it, select cells for equalization, delete the selected divider, reset the structure, change the canvas aspect, and edit padding or gap. Reset confirms before returning assigned photos to the tray; imported assets remain available.
 5. **Export.** Select **Export PNG** to download the finished collage.
 
 ## Layout and editing notes
 
 Generated Horizontal and Vertical layouts automatically size cells from the aspect ratios of the imported photos and place those photos in import order. Rebuilding with any layout option replaces the current layout adjustments.
 
-Manual layouts begin with one empty canvas. Choose one of these presets—1:1, 4:5, 5:4, 3:4, 4:3, 16:9, or 9:16—or provide a valid custom width-to-height ratio. Create, resize, or delete dividers before selecting **Next** to continue to the collage editor.
+Manual layouts begin with one empty canvas. Choose one of these presets: 1:1, 4:5, 5:4, 3:4, 4:3, 16:9, or 9:16, or provide a valid custom width-to-height ratio. Create, resize, or delete dividers before selecting **Next** to continue to the collage editor.
 
-In **Photo Editing** mode, you can place, pan, and zoom photos. In **Adjust Layout** mode, photo placement and pan/zoom controls are disabled so divider gestures take precedence. Changing a divider preserves the photo scale and offset; exposed space remains visible until you adjust that photo again.
+In **Photo Editing** mode, you can place, pan, and zoom photos. In **Adjust Layout** mode, photo selection, tray assignment, dragging, pinch zoom, and zoom controls are disabled so divider gestures take precedence. Changing a divider or canvas aspect preserves each photo's normalized size and focal position; exposed cell background remains visible until you adjust that photo again.
 
-Use the **Padding/Gap** control in the collage editor to tune spacing. Spacing changes preserve each photo's zoom and clamp its offset to the resized cell.
+Use the **Padding/Gap** control in the collage editor to tune spacing. Spacing changes preserve each photo's normalized image frame and do not silently refit it to the resized cell.
 
 ## Photos, reset, and privacy
 

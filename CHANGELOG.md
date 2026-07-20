@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.0
+
+- Made generated Horizontal and Vertical collages structurally editable after photo assignment.
+- Added split, divider deletion, equalization, reset, aspect, gap, and padding controls to Adjust Layout.
+- Preserved deterministic cell IDs and returned displaced photos to the tray after subtree collapse.
+- Unified preview and PNG export around canvas-normalized photo frames, allowing intentional blank cell areas.
+
 ## 0.3.0
 
 - Reworked the app into a photo-first workflow: import photos, choose a generated or Manual layout, then fine-tune the collage.

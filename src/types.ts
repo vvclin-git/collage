@@ -46,9 +46,17 @@ export type PhotoAsset = {
 
 export type PhotoPlacement = {
   photoId: string;
-  scale: number;
-  offsetX: number;
-  offsetY: number;
+  /** Cover-fit image width as a fraction of the canonical canvas width. */
+  imageWidth?: number;
+  /** User zoom multiplier applied to the initial cover-fit frame. */
+  zoom?: number;
+  /** Image center in canonical canvas coordinates (0..1). */
+  centerX?: number;
+  centerY?: number;
+  /** @deprecated Accepted only for old persisted snapshots; new state never writes these. */
+  scale?: number;
+  offsetX?: number;
+  offsetY?: number;
 };
 
 export type AppState = {

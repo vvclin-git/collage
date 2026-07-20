@@ -16,14 +16,14 @@ import {
   equalizeSelectedLeaves as solveEqualizeSelectedLeaves,
   type EqualizeAxis,
   type EqualizeLeavesResult,
-  getPreviewSpacingScale,
   getRenderableLeafRects,
   equalizeSplitChildren,
-  removeSplit,
+  removeSplitWithMetadata,
+  getCanonicalCanvasRect,
   splitLeaf,
   updateSplitRatio,
 } from "../lib/layout";
-import { clampOffset } from "../lib/photos";
+import { createPhotoPlacement } from "../lib/photos";
 
 export type CollageStore = {
   workflowStep: WorkflowStep;
@@ -36,7 +36,7 @@ export type CollageStore = {
   selectedLayoutLeafIds: string[];
   setGap: (gap: number) => void;
   setPadding: (padding: number) => void;
-  setSpacing: (gap: number, padding: number, canvasRect: Rect) => void;
+  setSpacing: (gap: number, padding: number, canvasRect?: Rect) => void;
   setAspectRatio: (aspectRatio: AspectRatio) => void;
   splitLeaf: (leafId: string, direction: SplitDirection, ratio: number) => void;
   updateSplitRatio: (splitId: string, ratio: number) => void;
@@ -58,7 +58,7 @@ export type CollageStore = {
   invalidateLayoutForPhotoSetChange: () => void;
   clearAllAndReset: () => void;
   selectCell: (cellId?: string) => void;
-  placePhoto: (cellId: string, photoId: string) => void;
+  placePhoto: (cellId: string, photoId: string, cellRect?: Rect, canvasRect?: Rect) => void;
   removePlacement: (cellId: string) => void;
   updatePlacement: (cellId: string, placement: PhotoPlacement) => void;
 };
@@ -72,24 +72,8 @@ function initialLayout(): LayoutState {
   };
 }
 
-function reclampPlacements(
-  layout: LayoutState,
-  photos: PhotoAsset[],
-  placements: Record<string, PhotoPlacement | undefined>,
-  canvasRect: Rect,
-): Record<string, PhotoPlacement | undefined> {
-  const rects = new Map(
-    getRenderableLeafRects(layout, canvasRect, getPreviewSpacingScale(canvasRect, layout.aspectRatio))
-      .map(({ id, rect }) => [id, rect]),
-  );
-  const photoMap = new Map(photos.map((photo) => [photo.id, photo]));
-  return Object.fromEntries(Object.entries(placements).map(([cellId, placement]) => {
-    if (!placement) return [cellId, placement];
-    const photo = photoMap.get(placement.photoId);
-    const rect = rects.get(cellId);
-    if (!photo || !rect) return [cellId, placement];
-    return [cellId, { ...placement, ...clampOffset(placement.offsetX, placement.offsetY, photo, rect, placement.scale) }];
-  }));
+function leafIds(root: LayoutState["root"]): Set<string> {
+  return new Set(root.type === "leaf" ? [root.id] : getRenderableLeafRects({ root, gap: 0, padding: 0, aspectRatio: { kind: "preset", value: "1:1" } }, { x: 0, y: 0, width: 1, height: 1 }).map((leaf) => leaf.id));
 }
 
 export const useCollageStore = create<CollageStore>((set) => ({
@@ -107,11 +91,7 @@ export const useCollageStore = create<CollageStore>((set) => ({
     set((state) => ({
       layout: { ...state.layout, padding },
     })),
-  setSpacing: (gap, padding, canvasRect) =>
-    set((state) => {
-      const layout = { ...state.layout, gap, padding };
-      return { layout, placements: reclampPlacements(layout, state.photos, state.placements, canvasRect) };
-    }),
+  setSpacing: (gap, padding) => set((state) => ({ layout: { ...state.layout, gap, padding } })),
   setAspectRatio: (aspectRatio) =>
     set((state) => ({
       layout: { ...state.layout, aspectRatio },
@@ -143,12 +123,18 @@ export const useCollageStore = create<CollageStore>((set) => ({
         return state;
       }
 
+      const assigned = new Set(Object.entries(state.placements).filter(([, placement]) => placement).map(([cellId]) => cellId));
+      const result = removeSplitWithMetadata(state.layout.root, state.selectedSplitId, assigned);
+      const placements = Object.fromEntries(Object.entries(state.placements).filter(([cellId]) => !result.removedLeafIds.includes(cellId)));
+      const valid = leafIds(result.root);
       return {
         layout: {
           ...state.layout,
-          root: removeSplit(state.layout.root, state.selectedSplitId),
+          root: result.root,
         },
+        placements,
         selectedSplitId: undefined,
+        selectedCellId: state.selectedCellId && valid.has(state.selectedCellId) ? state.selectedCellId : undefined,
         selectedLayoutLeafIds: [],
       };
     }),
@@ -282,7 +268,15 @@ export const useCollageStore = create<CollageStore>((set) => ({
         const photo = state.photos[index];
         const leafId = generated.leafIds[index];
         if (!photo || !leafId) return state;
-        placements[leafId] = { photoId: photo.id, scale: 1, offsetX: 0, offsetY: 0 };
+        const canvasRect = getCanonicalCanvasRect({ kind: "custom", width: canvasAspect, height: 1 });
+        const leafRects = getRenderableLeafRects({
+          ...state.layout,
+          root: generated.root,
+          aspectRatio: { kind: "custom", width: canvasAspect, height: 1 },
+        }, canvasRect);
+        const cellRect = leafRects.find((leaf) => leaf.id === leafId)?.rect;
+        if (!cellRect) return state;
+        placements[leafId] = createPhotoPlacement(photo, cellRect, canvasRect);
       }
       return {
         layout: {
@@ -327,19 +321,19 @@ export const useCollageStore = create<CollageStore>((set) => ({
     selectedSplitId: undefined,
     selectedLayoutLeafIds: [],
   }),
-  placePhoto: (cellId, photoId) =>
-    set((state) => ({
-      placements: {
-        ...state.placements,
-        [cellId]: {
-          photoId,
-          scale: 1,
-          offsetX: 0,
-          offsetY: 0,
-        },
-      },
+  placePhoto: (cellId, photoId, cellRect, canvasRect) =>
+    set((state) => {
+      const canonicalCanvas = canvasRect ?? getCanonicalCanvasRect(state.layout.aspectRatio);
+      const canonicalCell = cellRect ?? getRenderableLeafRects(state.layout, canonicalCanvas).find((leaf) => leaf.id === cellId)?.rect ?? canonicalCanvas;
+      return {
+        placements: { ...state.placements, [cellId]: createPhotoPlacement(
+          state.photos.find((photo) => photo.id === photoId) ?? { id: photoId, src: "", fileName: "", width: 1, height: 1, mimeType: "" },
+          canonicalCell,
+          canonicalCanvas,
+        ) },
         selectedCellId: cellId,
-    })),
+      };
+    }),
   removePlacement: (cellId) =>
     set((state) => ({
       placements: {

@@ -113,7 +113,7 @@ describe("collage store", () => {
     expect(state.layout.root).toMatchObject({ type: "split", direction: "vertical" });
     const placementPhotoIds = Object.values(state.placements).map((placement) => placement?.photoId);
     expect(placementPhotoIds).toEqual(["wide", "square", "tall"]);
-    expect(Object.values(state.placements)).toEqual(Object.values(state.placements).map((placement) => ({ ...placement, scale: 1, offsetX: 0, offsetY: 0 })));
+    expect(Object.values(state.placements).every((placement) => placement?.zoom === 1 && placement.imageWidth && placement.centerX && placement.centerY)).toBe(true);
     expect(state.selectedSplitId).toBeUndefined();
     expect(state.selectedCellId).toBeUndefined();
     expect(state.selectedLayoutLeafIds).toEqual([]);
@@ -163,10 +163,8 @@ describe("collage store", () => {
 
     useCollageStore.getState().placePhoto("new", "photo-1");
 
-    expect(useCollageStore.getState().placements).toEqual({
-      old: { photoId: "photo-1", scale: 1, offsetX: 0, offsetY: 0 },
-      new: { photoId: "photo-1", scale: 1, offsetX: 0, offsetY: 0 },
-    });
+    expect(useCollageStore.getState().placements.new?.photoId).toBe("photo-1");
+    expect(useCollageStore.getState().placements.new?.zoom).toBe(1);
   });
 
   it("revokes object URLs when removing photo assets", () => {
@@ -292,17 +290,58 @@ describe("collage store", () => {
     expect(useCollageStore.getState().layout.root).toMatchObject({ ratio: 0.5 });
   });
 
-  it("updates spacing and re-clamps placement offsets atomically without changing zoom", () => {
+  it("leaves normalized image frames unchanged when spacing changes", () => {
     useCollageStore.setState({
       photos: [{ id: "photo-1", src: "blob:spacing", fileName: "wide.jpg", width: 400, height: 200, mimeType: "image/jpeg" }],
       placements: { root: { photoId: "photo-1", scale: 2, offsetX: 9999, offsetY: 9999 } },
     });
+    const before = { ...useCollageStore.getState().placements.root };
     useCollageStore.getState().setSpacing(200, 100, { x: 0, y: 0, width: 1000, height: 1000 });
     const state = useCollageStore.getState();
     expect(state.layout).toMatchObject({ gap: 200, padding: 100 });
-    expect(state.placements.root?.scale).toBe(2);
-    expect(state.placements.root?.offsetX).toBeLessThan(9999);
-    expect(state.placements.root?.offsetY).toBeLessThan(9999);
+    expect(state.placements.root).toEqual(before);
+  });
+
+  it("retains the original occupied leaf when splitting", () => {
+    useCollageStore.setState({
+      photos: [{ id: "photo-1", src: "blob:one", fileName: "one.jpg", width: 100, height: 100, mimeType: "image/jpeg" }],
+      placements: { root: { photoId: "photo-1", imageWidth: 0.4, zoom: 2, centerX: 0.3, centerY: 0.7 } },
+    });
+    useCollageStore.getState().splitLeaf("root", "vertical", 0.5);
+    const state = useCollageStore.getState();
+    expect(state.layout.root).toMatchObject({ type: "split", children: [{ id: "root", type: "leaf" }, { type: "leaf" }] });
+    expect(state.placements.root).toEqual({ photoId: "photo-1", imageWidth: 0.4, zoom: 2, centerX: 0.3, centerY: 0.7 });
+  });
+
+  it("collapses nested dividers, keeps the first assigned frame, and removes other placements", () => {
+    useCollageStore.setState({
+      layout: { ...useCollageStore.getState().layout, root: { id: "outer", type: "split", direction: "vertical", ratio: 0.5, children: [
+        { id: "left", type: "leaf" },
+        { id: "inner", type: "split", direction: "horizontal", ratio: 0.5, children: [{ id: "top", type: "leaf" }, { id: "bottom", type: "leaf" }] },
+      ] } },
+      placements: {
+        left: { photoId: "left-photo", imageWidth: 0.2, zoom: 1, centerX: 0.2, centerY: 0.5 },
+        top: { photoId: "top-photo", imageWidth: 0.3, zoom: 1, centerX: 0.5, centerY: 0.5 },
+        bottom: { photoId: "bottom-photo", imageWidth: 0.4, zoom: 1, centerX: 0.8, centerY: 0.5 },
+      },
+      selectedSplitId: "inner",
+    });
+    useCollageStore.getState().deleteSelectedSplit();
+    const state = useCollageStore.getState();
+    expect(state.layout.root).toMatchObject({ type: "split", children: [{ id: "left" }, { id: "top" }] });
+    expect(state.placements).toEqual({ left: expect.anything(), top: expect.anything() });
+    expect(state.placements.bottom).toBeUndefined();
+  });
+
+  it("preserves normalized frames across aspect and divider edits", () => {
+    useCollageStore.setState({
+      layout: { ...useCollageStore.getState().layout, root: { id: "split", type: "split", direction: "vertical", ratio: 0.4, children: [{ id: "a", type: "leaf" }, { id: "b", type: "leaf" }] } },
+      placements: { a: { photoId: "photo-a", imageWidth: 0.25, zoom: 1.7, centerX: 0.2, centerY: 0.6 } },
+    });
+    const before = structuredClone(useCollageStore.getState().placements);
+    useCollageStore.getState().setAspectRatio({ kind: "preset", value: "16:9" });
+    useCollageStore.getState().updateSplitRatio("split", 0.7);
+    expect(useCollageStore.getState().placements).toEqual(before);
   });
 
   it("clears all assets atomically, revoking each distinct URL once and restoring defaults", () => {

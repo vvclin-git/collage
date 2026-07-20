@@ -8,6 +8,48 @@ export type CoverTransform = {
   scale: number;
 };
 
+export function createPhotoPlacement(
+  photo: PhotoAsset,
+  cellRect: Rect,
+  canvasRect: Rect,
+): PhotoPlacement {
+  const cover = getCoverTransform(photo, cellRect);
+  return {
+    photoId: photo.id,
+    imageWidth: cover.width / canvasRect.width,
+    zoom: 1,
+    centerX: (cover.x + cover.width / 2 - canvasRect.x) / canvasRect.width,
+    centerY: (cover.y + cover.height / 2 - canvasRect.y) / canvasRect.height,
+  };
+}
+
+export function getPlacementTransform(
+  photo: PhotoAsset,
+  placement: PhotoPlacement,
+  canvasRect: Rect,
+): CoverTransform {
+  const imageWidth = placement.imageWidth ?? 1;
+  const zoom = placement.zoom ?? placement.scale ?? 1;
+  const centerX = placement.centerX ?? 0.5;
+  const centerY = placement.centerY ?? 0.5;
+  const width = canvasRect.width * imageWidth * zoom;
+  const height = width * photo.height / photo.width;
+  return {
+    width,
+    height,
+    x: canvasRect.x + canvasRect.width * centerX - width / 2,
+    y: canvasRect.y + canvasRect.height * centerY - height / 2,
+    scale: width / photo.width,
+  };
+}
+
+export function clampOffset(offsetX: number, offsetY: number, photo: PhotoAsset, rect: Rect, placementScale: number) {
+  const cover = getCoverTransform(photo, rect);
+  const maxX = Math.max(0, (cover.width * placementScale - rect.width) / 2);
+  const maxY = Math.max(0, (cover.height * placementScale - rect.height) / 2);
+  return { offsetX: Math.min(maxX, Math.max(-maxX, offsetX)), offsetY: Math.min(maxY, Math.max(-maxY, offsetY)) };
+}
+
 export function getTrayPhotos(
   photos: PhotoAsset[],
   _placements: Record<string, PhotoPlacement | undefined>,
@@ -29,40 +71,20 @@ export function getCoverTransform(photo: PhotoAsset, rect: Rect): CoverTransform
   };
 }
 
-export function clampOffset(
-  offsetX: number,
-  offsetY: number,
-  photo: PhotoAsset,
-  rect: Rect,
-  placementScale: number,
-): { offsetX: number; offsetY: number } {
-  const cover = getCoverTransform(photo, rect);
-  const width = cover.width * placementScale;
-  const height = cover.height * placementScale;
-  const maxX = Math.max(0, (width - rect.width) / 2);
-  const maxY = Math.max(0, (height - rect.height) / 2);
-
-  return {
-    offsetX: Math.min(maxX, Math.max(-maxX, offsetX)),
-    offsetY: Math.min(maxY, Math.max(-maxY, offsetY)),
-  };
-}
-
 export function zoomPlacement(
   placement: PhotoPlacement,
-  photo: PhotoAsset,
-  rect: Rect,
-  nextScale: number,
+  nextScaleOrPhoto: number | PhotoAsset,
+  rectOrScale?: Rect | number,
+  maybeScale?: number,
   maxScale = 4,
 ): PhotoPlacement {
-  const scale = Math.min(maxScale, Math.max(1, nextScale));
-  const offset = clampOffset(placement.offsetX, placement.offsetY, photo, rect, scale);
-
-  return {
-    ...placement,
-    scale,
-    ...offset,
-  };
+  const nextScale = typeof nextScaleOrPhoto === "number" ? nextScaleOrPhoto : maybeScale ?? 1;
+  if (typeof nextScaleOrPhoto !== "number" && typeof rectOrScale === "object") {
+    const legacyScale = Math.min(maxScale, Math.max(1, nextScale));
+    const offset = clampOffset(placement.offsetX ?? 0, placement.offsetY ?? 0, nextScaleOrPhoto, rectOrScale, legacyScale);
+    return { ...placement, scale: legacyScale, offsetX: offset.offsetX, offsetY: offset.offsetY };
+  }
+  return { ...placement, zoom: Math.min(maxScale, Math.max(1, nextScale)) };
 }
 
 export async function getImageSize(src: string): Promise<{ width: number; height: number }> {

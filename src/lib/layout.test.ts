@@ -11,6 +11,7 @@ import {
   getSplitGesture,
   layoutNode,
   removeSplit,
+  removeSplitWithMetadata,
   splitLeaf,
   updateSplitRatio,
 } from "./layout";
@@ -136,7 +137,22 @@ describe("layout engine", () => {
       expect(next.direction).toBe("vertical");
       expect(next.ratio).toBe(0.85);
       expect(next.children).toHaveLength(2);
+      expect(next.children[0]).toEqual({ id: "root", type: "leaf" });
     }
+  });
+
+  it("collapses a subtree in visual order and reports displaced leaves", () => {
+    const tree: CollageNode = { id: "outer", type: "split", direction: "vertical", ratio: 0.5, children: [
+      { id: "left", type: "leaf" },
+      { id: "inner", type: "split", direction: "horizontal", ratio: 0.5, children: [
+        { id: "top", type: "leaf" },
+        { id: "bottom", type: "leaf" },
+      ] },
+    ] };
+    const result = removeSplitWithMetadata(tree, "inner", new Set(["bottom"]));
+    expect(result.retainedLeafId).toBe("bottom");
+    expect(result.removedLeafIds).toEqual(["top"]);
+    expect(result.root).toMatchObject({ type: "split", children: [{ id: "left" }, { id: "bottom" }] });
   });
 
   it("updates and removes split nodes immutably", () => {

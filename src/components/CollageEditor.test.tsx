@@ -59,6 +59,15 @@ describe("CollageEditor photo clearing", () => {
     expect(screen.queryByRole("button", { name: "Remove Photo" })).not.toBeInTheDocument();
   });
 
+  it("exposes structural layout controls and disables photo picking in Adjust Layout", () => {
+    render(<CollageEditor onImportFiles={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: "Adjust Layout" }));
+    expect(screen.getByRole("region", { name: "Layout controls" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Equalize Widths" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Use a.jpg" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Photo Editing" })).toBeInTheDocument();
+  });
+
   it("removing a photo invalidates the layout and returns to layout choice", () => {
     render(<CollageEditor onImportFiles={vi.fn()} />);
     fireEvent.click(screen.getByRole("button", { name: "Remove a.jpg" }));
