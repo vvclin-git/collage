@@ -46,31 +46,24 @@ describe("CollageEditor photo clearing", () => {
     expect(useCollageStore.getState().workflowStep).toBe("start");
   });
 
-  it("keeps layout replacement controls folded until requested", () => {
+  it("does not expose later-stage layout replacement controls", () => {
     render(<CollageEditor onImportFiles={vi.fn()} />);
-    const disclosure = screen.getByRole("button", { name: "Layout Options" });
-    expect(disclosure).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByRole("button", { name: "Layout Options" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Horizontal" })).not.toBeInTheDocument();
-    fireEvent.click(disclosure);
-    expect(screen.getByRole("button", { name: "Horizontal" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Vertical" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Manual" })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Edit Layout" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Remove Photo" })).not.toBeInTheDocument();
   });
 
   it("exposes structural layout controls and disables photo picking in Adjust Layout", () => {
     render(<CollageEditor onImportFiles={vi.fn()} />);
     fireEvent.click(screen.getByRole("button", { name: "Adjust Layout" }));
     expect(screen.getByRole("region", { name: "Layout controls" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Equalize Widths" })).toBeDisabled();
+    expect(screen.queryByRole("button", { name: "Equalize Width" })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Use a.jpg" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Photo Editing" })).toBeInTheDocument();
   });
 
-  it("removing a photo invalidates the layout and returns to layout choice", () => {
+  it("removing a photo preserves the editing workflow", () => {
     render(<CollageEditor onImportFiles={vi.fn()} />);
     fireEvent.click(screen.getByRole("button", { name: "Remove a.jpg" }));
-    expect(useCollageStore.getState()).toMatchObject({ workflowStep: "choose-layout", photos: [photos[1]], placements: {} });
+    expect(useCollageStore.getState()).toMatchObject({ workflowStep: "edit-collage", photos: [photos[1]], placements: {} });
   });
 });

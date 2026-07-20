@@ -48,6 +48,7 @@ export type CollageStore = {
   equalizeSelectedLeaves: (axis: EqualizeAxis) => EqualizeLeavesResult;
   resetLayout: () => void;
   importPhotoAssets: (photos: PhotoAsset[]) => void;
+  appendPhotoAssets: (photos: PhotoAsset[]) => void;
   removePhotoAsset: (photoId: string) => void;
   openManualAspect: (origin: ManualAspectOrigin) => void;
   cancelManualAspect: () => void;
@@ -189,6 +190,10 @@ export const useCollageStore = create<CollageStore>((set) => ({
         manualAspectOrigin: undefined,
       };
     }),
+  appendPhotoAssets: (photos) =>
+    set((state) => photos.length === 0 ? state : ({
+      photos: [...state.photos, ...photos],
+    })),
   removePhotoAsset: (photoId) =>
     set((state) => {
       const removedSources = new Set(
@@ -203,13 +208,12 @@ export const useCollageStore = create<CollageStore>((set) => ({
 
       return {
         photos,
-        layout: { ...state.layout, root: createRootLeaf() },
-        placements: {},
-        selectedSplitId: undefined,
-        selectedCellId: undefined,
-        selectedLayoutLeafIds: [],
-        workflowStep: "choose-layout",
-        manualAspectOrigin: undefined,
+        placements: Object.fromEntries(
+          Object.entries(state.placements).map(([cellId, placement]) => [
+            cellId,
+            placement?.photoId === photoId ? undefined : placement,
+          ]),
+        ),
       };
     }),
   openManualAspect: (origin) => set({ workflowStep: "manual-aspect", manualAspectOrigin: origin }),

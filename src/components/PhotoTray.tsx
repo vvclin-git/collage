@@ -71,6 +71,7 @@ export function PhotoTray({
                 type="button"
                 className="tray-remove"
                 onClick={() => onRemovePhoto(photo.id)}
+                disabled={isExporting}
                 aria-label={`Remove ${photo.fileName}`}
                 title="Remove image"
               >
@@ -80,7 +81,7 @@ export function PhotoTray({
             </div>
           ))
         )}
-        <label className={isExporting ? "tray-add mobile-import-action is-disabled" : "tray-add mobile-import-action"}>
+        <label className={isExporting ? "tray-add is-disabled" : "tray-add"}>
           <span aria-hidden="true">+</span>
           <span className="visually-hidden">Add photos</span>
           <input

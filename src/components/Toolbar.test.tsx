@@ -81,8 +81,8 @@ describe("Toolbar controls", () => {
       zoomScale: 1, gap: 24, padding: 16, onImportFiles: vi.fn(), onToggleInteractionMode: vi.fn(),
       onZoomChange: vi.fn(), onSpacingChange: vi.fn(), onExport: vi.fn() };
     render(<CollageControls {...base} />);
-    expect(screen.getByLabelText("Import Photos")).toBeDisabled();
+    expect(screen.queryByLabelText("Import Photos")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Adjust Layout" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Exporting..." })).toBeDisabled();
+    expect(screen.queryByRole("button", { name: "Exporting..." })).not.toBeInTheDocument();
   });
 });

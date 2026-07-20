@@ -71,6 +71,9 @@ button:disabled {
   gap: 16px;
 }
 
+.topbar-actions { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.header-export { white-space: nowrap; }
+
 .topbar h1,
 .topbar p,
 .photo-tray h2 {
@@ -148,6 +151,13 @@ button:disabled {
 .control-panel.compact {
   align-self: end;
 }
+
+.compact-layout-controls { grid-column: 1; grid-row: 3; align-self: start; gap: 10px; }
+.compact-action-row, .aspect-presets { display: flex; flex-wrap: wrap; gap: 8px; }
+.compact-action-row button, .aspect-presets button { min-height: 40px; }
+.compact-action-row button.is-selected, .aspect-presets button.is-selected { border-color: #1b6ca8; box-shadow: inset 0 0 0 1px #1b6ca8; }
+.inline-aspect { display: grid; gap: 10px; }
+.compact-more { display: flex; }
 
 .control-panel label {
   display: grid;
@@ -338,7 +348,7 @@ input:focus-visible {
 
 .photo-tray {
   grid-column: 1;
-  grid-row: 2;
+  grid-row: 4;
   min-width: 0;
   background: #fbf8f1;
   border: 1px solid #c6baaa;
@@ -495,7 +505,7 @@ input:focus-visible {
 
   .workspace {
     grid-template-columns: 1fr;
-    grid-template-rows: minmax(340px, 1fr) auto auto;
+    grid-template-rows: minmax(340px, 1fr) auto auto auto;
   }
 
   .control-panel,
@@ -505,6 +515,10 @@ input:focus-visible {
     grid-column: 1;
     grid-row: auto;
   }
+
+  .workspace > .fine-tune-tools { grid-row: 2; }
+  .workspace > .compact-layout-controls { grid-row: 3; }
+  .workspace > .photo-tray { grid-row: 4; }
 
   .button-row {
     grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
@@ -555,9 +569,9 @@ input:focus-visible {
     grid-template-rows: auto auto auto auto;
   }
 
-  .workspace > .photo-tray { grid-row: 2; }
-  .workspace > .layout-options-disclosure { grid-row: 3; }
-  .workspace > .fine-tune-tools { grid-row: 4; }
+  .workspace > .fine-tune-tools { grid-row: 2; }
+  .workspace > .compact-layout-controls { grid-row: 3; }
+  .workspace > .photo-tray { grid-row: 4; }
 
   .canvas-shell {
     height: clamp(220px, 38vh, 320px);
@@ -664,6 +678,13 @@ input:focus-visible {
   .desktop-import-action {
     display: none !important;
   }
+
+  .compact-layout-controls { gap: 6px; }
+  .compact-action-row { gap: 5px; overflow-x: auto; flex-wrap: nowrap; padding-bottom: 2px; }
+  .compact-action-row button { flex: 0 0 auto; min-height: 40px; padding: 0 9px; font-size: 0.78rem; }
+  .aspect-presets button { min-height: 40px; padding: 0 9px; font-size: 0.8rem; }
+  .topbar-actions { gap: 5px; }
+  .header-export { min-height: 40px; padding: 0 10px; font-size: 0.8rem; }
 
   .fine-tune-tools {
     grid-template-columns: repeat(3, minmax(0, 1fr));

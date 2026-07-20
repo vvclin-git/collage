@@ -2,46 +2,50 @@
 
 ## Current focus
 
-GitHub issue #3 is implemented on `codex/issue-3-edit-generated-layouts`. No commit, push, PR, or GitHub issue mutation was performed.
+Responsive editing cleanup is implemented on `codex/issue-3-edit-generated-layouts`. The editor now supports non-destructive photo collection changes and compact responsive controls.
 
 ## Current state
 
-- Splitting keeps the original leaf ID as the first visual child and its placement.
-- Divider deletion collapses the selected subtree deterministically, retains the first assigned visual leaf (or first visual leaf when empty), and removes displaced placements while preserving imported assets.
-- `PhotoPlacement` now writes a canvas-normalized image frame (`imageWidth`, `zoom`, `centerX`, `centerY`). Preview and export share `getPlacementTransform`; layout, aspect, spacing, and divider edits do not rewrite frames, and blank cell background is allowed.
-- Generated and manual layouts share the full Adjust Layout path in `CollageEditor`: divider selection/dragging, cell splitting, cell selection, equalization, delete, reset confirmation, aspect controls, and spacing controls. Photo gestures and tray assignment are disabled in that mode.
+- Initial import still enters layout selection and rebuilds the initial layout as before.
+- Editing-stage imports append assets without changing workflow, layout, aspect, selections, or placements.
+- Individual photo removal preserves the collage and clears every matching placement. Shared object URLs are revoked only after their last asset is removed; Clear All remains the full reset.
+- The Photo Tray owns the universal `+ Add Photos` action. Editing file drops are additive, and the toolbar no longer has an import action.
+- Later-stage Layout Options are removed. Horizontal, Vertical, and Manual remain in initial layout selection.
+- Export execution and busy state are owned by `App`, with responsive header labels and mutation guards.
+- Adjust Layout uses compact inline contextual controls. Aspect editing is inline, Custom inputs use `step="0.01"`, Reset is under More, and Photo Editing exits the mode.
+- Workspace ordering is canvas, mode/secondary controls, contextual layout controls, and Photo Tray through the responsive grid.
 
 ## Files recently changed
 
-- `src/types.ts`
-- `src/lib/layout.ts`, `src/lib/photos.ts`, `src/lib/export.ts`
-- `src/store/useCollageStore.ts`
-- `src/components/CollageEditor.tsx`
-- `src/lib/layout.test.ts`, `src/lib/photos.test.ts`, `src/lib/export.test.ts`
-- `src/store/useCollageStore.test.ts`, `src/components/CollageEditor.test.tsx`
-- `README.md`, `CHANGELOG.md`
+- `src/App.tsx`
+- `src/store/useCollageStore.ts` and its tests
+- `src/components/CollageEditor.tsx`, `PhotoTray.tsx`, and `Toolbar.tsx` plus focused tests
+- `src/styles.css`
+- `README.md`, `CHANGELOG.md`, and this handoff
 
 ## Important decisions
 
-Canonical frames use the export-sized aspect canvas as their coordinate space. Initial placement cover-fits the target cell, then stores image width relative to the canvas and center coordinates relative to the canvas. Legacy placement fields remain optional only to keep old in-memory test snapshots readable; new state writes canonical fields.
+- Preserve issue #3 normalized `PhotoPlacement` frames and preview/export equivalence.
+- Keep local object-URL photo handling; no upload or remote processing.
+- Keep full `LayoutControls` for the initial Manual layout screen and use the compact component only in collage editing.
 
 ## Tests run
 
-- Focused Vitest: 5 files, 61 tests passed.
-- Full direct Vitest: 11 files, 81 tests passed.
-- Direct `tsc -b`: passed.
-- Direct Vite production build: passed; Vite emitted only the existing chunk-size warning.
-- `git diff --check`: passed.
-- Vite smoke server: `vite --host 127.0.0.1 --port 4173`; `/collage/` returned HTTP 200; server stopped.
-- Playwright Chromium QA: desktop and 390px mobile sessions passed. Verified Adjust Layout controls, aspect selection, disabled tray assignment, cell selection, split gesture, and no mobile horizontal overflow. Vite and Chromium were stopped.
-- Playwright export check: PNG download completed successfully with a timestamped filename.
+- `cmd /c .\\node_modules\\.bin\\tsc.CMD -b` passed.
+- `cmd /c .\\node_modules\\.bin\\vitest.CMD run` passed: 11 files, 83 tests.
+- `cmd /c .\\node_modules\\.bin\\vite.CMD build` passed; `git diff --check` passed. Vite emitted only the existing large-chunk warning.
+- The PowerShell `pnpm.ps1` shim is blocked by execution policy; equivalent local binaries passed typecheck, tests, and build. `pnpm` itself was not used.
+- `git diff --check` remains to be run.
 
-## Known issues and verification remaining
+## Browser verification
 
-- `pnpm test`, `pnpm exec tsc -b`, and `pnpm build` cannot run through pnpm after the reset because pnpm attempts registry metadata repair and aborts without a TTY. Equivalent local binaries pass.
-- Playwright was added as a dev dependency for local browser QA (`package.json`, `pnpm-lock.yaml`).
-- Legacy placement fields remain optional for old in-memory snapshots; new application writes use normalized fields exclusively.
+- Vite was started on `http://127.0.0.1:4173/collage/` and stopped after checks. Playwright verified no horizontal overflow at 1440, 768, 523, and 375px on the start screen.
+- A 375px editing flow with an in-memory PNG verified header `Export`, one tray `Add photos` action, no later-stage `Layout Options`, inline `Aspect` and `More`, no `Next`, and the `Photo Editing` exit action. The editing view also had no horizontal overflow.
 
-## Next recommended step
+## Known issues and next step
 
-Install or expose the repository’s browser automation dependency, then exercise generated/manual layouts, splitting, deletion, aspect changes, blank areas, tray preservation, photo editing, and PNG export at desktop and mobile widths.
+- Browser verification did not exercise PNG rendering success, Clear All confirmation, or removal through the live browser; those behaviors are covered by existing component/store tests except for actual download rendering.
+
+## Scope
+
+Do not commit, push, open a PR, or mutate GitHub issue state unless explicitly requested.

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.0
+
+- Added non-destructive photo additions and individual removal during collage editing.
+- Consolidated editing imports into the Photo Tray and made the add tile available at every viewport.
+- Moved export to the responsive header and added compact inline Adjust Layout controls with contextual actions and aspect editing.
+- Removed later-stage Layout Options and normalized canvas, controls, tray, and secondary-control ordering.
+
 ## 0.4.0
 
 - Made generated Horizontal and Vertical collages structurally editable after photo assignment.

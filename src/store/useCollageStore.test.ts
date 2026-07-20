@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useCollageStore } from "./useCollageStore";
+import type { LayoutState } from "../types";
 
 describe("collage store", () => {
   beforeEach(() => {
@@ -187,7 +188,7 @@ describe("collage store", () => {
 
     expect(revoke).toHaveBeenCalledWith("blob:test");
     expect(useCollageStore.getState().photos).toEqual([]);
-    expect(useCollageStore.getState()).toMatchObject({ workflowStep: "choose-layout", placements: {}, layout: { root: { type: "leaf" } } });
+    expect(useCollageStore.getState()).toMatchObject({ workflowStep: "start", placements: {}, layout: { root: { type: "leaf" } } });
     revoke.mockRestore();
   });
 
@@ -300,6 +301,24 @@ describe("collage store", () => {
     const state = useCollageStore.getState();
     expect(state.layout).toMatchObject({ gap: 200, padding: 100 });
     expect(state.placements.root).toEqual(before);
+  });
+
+  it("appends photos without changing editing state or placements", () => {
+    const layout: LayoutState = { ...useCollageStore.getState().layout, root: { id: "split", type: "split", direction: "vertical", ratio: 0.4, children: [{ id: "a", type: "leaf" }, { id: "b", type: "leaf" }] } };
+    const placement = { photoId: "photo-1", imageWidth: 0.4, zoom: 1.5, centerX: 0.3, centerY: 0.6 };
+    useCollageStore.setState({ workflowStep: "edit-collage", layout, photos: [{ id: "photo-1", src: "blob:one", fileName: "one.jpg", width: 10, height: 10, mimeType: "image/jpeg" }], placements: { a: placement }, selectedCellId: "a", selectedSplitId: "split", selectedLayoutLeafIds: ["a"] });
+    useCollageStore.getState().appendPhotoAssets([{ id: "photo-2", src: "blob:two", fileName: "two.jpg", width: 20, height: 20, mimeType: "image/jpeg" }]);
+    expect(useCollageStore.getState()).toMatchObject({ workflowStep: "edit-collage", layout, placements: { a: placement }, selectedCellId: "a", selectedSplitId: "split", selectedLayoutLeafIds: ["a"], photos: [{ id: "photo-1" }, { id: "photo-2" }] });
+  });
+
+  it("removes a photo from all placements without changing the layout", () => {
+    const layout = useCollageStore.getState().layout;
+    const revoke = vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => undefined);
+    useCollageStore.setState({ workflowStep: "edit-collage", layout, photos: [{ id: "photo-1", src: "blob:shared", fileName: "one.jpg", width: 10, height: 10, mimeType: "image/jpeg" }, { id: "photo-2", src: "blob:shared", fileName: "two.jpg", width: 10, height: 10, mimeType: "image/jpeg" }], placements: { a: { photoId: "photo-1" }, b: { photoId: "photo-1" }, c: { photoId: "photo-2" } } });
+    useCollageStore.getState().removePhotoAsset("photo-1");
+    expect(useCollageStore.getState()).toMatchObject({ workflowStep: "edit-collage", layout, photos: [{ id: "photo-2" }], placements: { a: undefined, b: undefined, c: { photoId: "photo-2" } } });
+    expect(revoke).not.toHaveBeenCalled();
+    revoke.mockRestore();
   });
 
   it("retains the original occupied leaf when splitting", () => {
