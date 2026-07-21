@@ -4,7 +4,15 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ReactNode } from "react";
 
 vi.mock("react-konva", () => ({
-  Stage: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
+  Stage: ({ children, onPointerDown, onPointerUp, onPointerCancel }: {
+    children?: ReactNode;
+    onPointerDown?: (event: { target: { getStage: () => { getPointerPosition: () => { x: number; y: number } } } }) => void;
+    onPointerUp?: (event: { target: { getStage: () => { getPointerPosition: () => { x: number; y: number } } } }) => void;
+    onPointerCancel?: () => void;
+  }) => {
+    const event = { target: { getStage: () => ({ getPointerPosition: () => ({ x: 400, y: 300 }) }) } };
+    return <div data-testid="konva-stage" onPointerDown={() => onPointerDown?.(event)} onPointerUp={() => onPointerUp?.(event)} onPointerCancel={() => onPointerCancel?.()}>{children}</div>;
+  },
   Layer: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
   Group: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
   Rect: () => null,
@@ -28,6 +36,7 @@ describe("CollageEditor photo clearing", () => {
   beforeEach(() => {
     useCollageStore.setState({ workflowStep: "edit-collage", photos, placements: {} });
     Object.defineProperty(URL, "revokeObjectURL", { configurable: true, value: vi.fn() });
+    Object.defineProperty(HTMLElement.prototype, "setPointerCapture", { configurable: true, value: vi.fn() });
   });
 
   it("includes the count and placements warning, and cancellation preserves photos", () => {
@@ -65,5 +74,38 @@ describe("CollageEditor photo clearing", () => {
     render(<CollageEditor onImportFiles={vi.fn()} />);
     fireEvent.click(screen.getByRole("button", { name: "Remove a.jpg" }));
     expect(useCollageStore.getState()).toMatchObject({ workflowStep: "edit-collage", photos: [photos[1]], placements: {} });
+  });
+
+  it("captures touch pointers only in Photo Editing", () => {
+    render(<CollageEditor onImportFiles={vi.fn()} />);
+    const stage = screen.getByTestId("konva-stage");
+    fireEvent.pointerDown(stage, { pointerType: "touch", pointerId: 7, clientX: 20, clientY: 30 });
+    expect(HTMLElement.prototype.setPointerCapture).toHaveBeenCalledWith(7);
+
+    vi.mocked(HTMLElement.prototype.setPointerCapture).mockClear();
+    fireEvent.click(screen.getByRole("button", { name: "Adjust Layout" }));
+    fireEvent.pointerDown(stage, { pointerType: "touch", pointerId: 8, clientX: 20, clientY: 30 });
+    expect(HTMLElement.prototype.setPointerCapture).not.toHaveBeenCalled();
+  });
+
+  it("does not track non-touch pointers and resets touch state across mode changes", () => {
+    render(<CollageEditor onImportFiles={vi.fn()} />);
+    const stage = screen.getByTestId("konva-stage");
+    fireEvent.pointerDown(stage, { pointerType: "mouse", pointerId: 3, clientX: 20, clientY: 30 });
+    expect(HTMLElement.prototype.setPointerCapture).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Adjust Layout" }));
+    fireEvent.click(screen.getByRole("button", { name: "Photo Editing" }));
+    fireEvent.pointerDown(stage, { pointerType: "touch", pointerId: 4, clientX: 20, clientY: 30 });
+    expect(HTMLElement.prototype.setPointerCapture).toHaveBeenCalledWith(4);
+  });
+
+  it("drops a cancelled layout gesture before a later pointer-up", () => {
+    render(<CollageEditor onImportFiles={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: "Adjust Layout" }));
+    const stage = screen.getByTestId("konva-stage");
+    fireEvent.pointerDown(stage, { pointerType: "touch", pointerId: 1, clientX: 400, clientY: 300 });
+    fireEvent.pointerCancel(stage, { pointerType: "touch", pointerId: 1 });
+    fireEvent.pointerUp(stage, { pointerType: "touch", pointerId: 1, clientX: 400, clientY: 300 });
+    expect(screen.getByText("0 cells selected")).toBeInTheDocument();
   });
 });

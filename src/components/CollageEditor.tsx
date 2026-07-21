@@ -224,7 +224,7 @@ export function CollageEditor({ isExporting = false, onImportFiles = () => undef
   };
 
   const onHostPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (event.pointerType !== "touch") {
+    if (event.pointerType !== "touch" || isAdjustMode) {
       return;
     }
 
@@ -310,6 +310,11 @@ export function CollageEditor({ isExporting = false, onImportFiles = () => undef
               } else {
                 const gesture = getSplitGesture(start.point, point, cell.rect);
                 splitLeaf(start.leafId, gesture.direction, gesture.ratio);
+              }
+            }}
+            onPointerCancel={() => {
+              if (isAdjustMode) {
+                layoutDragStartRef.current = undefined;
               }
             }}
           >
@@ -446,6 +451,8 @@ export function CollageEditor({ isExporting = false, onImportFiles = () => undef
         zoomScale={selectedPlacement?.zoom ?? 1}
         onToggleInteractionMode={() => {
           pinchRef.current = undefined;
+          activePointersRef.current.clear();
+          layoutDragStartRef.current = undefined;
           setInteractionMode((mode) => (mode === "photo" ? "adjust" : "photo"));
         }}
         onZoomChange={(scale) => {
