@@ -39,6 +39,17 @@ describe("LayoutEditor workflow actions", () => {
     expect(useCollageStore.getState().placements).toEqual({ cell: placement });
   });
 
+  it("uses contextual controls instead of disabled layout actions", () => {
+    render(<LayoutEditor />);
+
+    expect(screen.getByRole("button", { name: "Aspect: 1:1" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "More" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Next" })).toBeEnabled();
+    expect(screen.queryByRole("button", { name: "Delete Line" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Equalize Width" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Equalize Height" })).not.toBeInTheDocument();
+  });
+
   it("returns to layout choice through the manual-layout cancel action", () => {
     render(<LayoutEditor />);
     fireEvent.click(screen.getByRole("button", { name: "Back" }));

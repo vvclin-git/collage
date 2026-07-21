@@ -9,6 +9,9 @@ import { createPhotoAssets, type PhotoImportRejection } from "./lib/photoAssets"
 import { exportCollage } from "./lib/export";
 import { snapshotAppState, useCollageStore } from "./store/useCollageStore";
 
+const appBranch = import.meta.env.VITE_APP_BRANCH || "local";
+const appCommit = import.meta.env.VITE_APP_COMMIT?.slice(0, 8) || "development";
+
 function describeRejections(rejections: PhotoImportRejection[]): string | undefined {
   if (rejections.length === 0) return undefined;
   const names = rejections.map(({ file }) => file.name).join(", ");
@@ -138,6 +141,11 @@ export function App() {
       {content}
       {importError ? <p className="workflow-error" role="alert">{importError}</p> : null}
       {isDraggingFiles ? <div className="drop-overlay">Drop photos to import</div> : null}
+      <footer className="app-build-info" role="contentinfo" aria-label="Build information">
+        <span>Branch: {appBranch}</span>
+        <span aria-hidden="true">·</span>
+        <span>Commit: {appCommit}</span>
+      </footer>
     </main>
   );
 }

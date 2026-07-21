@@ -31,6 +31,7 @@ describe("App workflow", () => {
   it("routes solely from workflowStep", () => {
     const { rerender } = render(<App />);
     expect(screen.getByRole("button", { name: "Import photos" })).toBeInTheDocument();
+    expect(screen.getByRole("contentinfo", { name: "Build information" })).toHaveTextContent(/Branch: .+·Commit: .+/);
     useCollageStore.setState({ workflowStep: "manual-layout" });
     rerender(<App />);
     expect(screen.getByText("Manual editor")).toBeInTheDocument();

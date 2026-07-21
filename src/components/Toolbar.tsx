@@ -72,9 +72,10 @@ export function LayoutControls({ aspectRatio, canDeleteSplit, selectedCellCount,
 
 type CompactLayoutControlsProps = Omit<LayoutControlsProps, "onNext"> & {
   isExporting?: boolean;
+  onNext?: () => void;
 };
 
-export function CompactLayoutControls({ aspectRatio, canDeleteSplit, selectedCellCount, onAspectRatioChange, onDeleteSplit, onEqualize, onReset, isExporting = false }: CompactLayoutControlsProps) {
+export function CompactLayoutControls({ aspectRatio, canDeleteSplit, selectedCellCount, onAspectRatioChange, onDeleteSplit, onEqualize, onReset, onNext, isExporting = false }: CompactLayoutControlsProps) {
   const [isAspectOpen, setIsAspectOpen] = useState(false);
   const [isMoreOpen, setIsMoreOpen] = useState(false);
   const [customWidth, setCustomWidth] = useState(aspectRatio.kind === "custom" ? formatAspectValue(aspectRatio.width) : "1");
@@ -109,6 +110,7 @@ export function CompactLayoutControls({ aspectRatio, canDeleteSplit, selectedCel
       {selectedValue === "custom" ? <div className="custom-aspect"><label>Width<input type="number" min="0" step="0.01" disabled={isExporting} value={customWidth} onChange={(event) => setCustomWidth(event.target.value)} /></label><label>Height<input type="number" min="0" step="0.01" disabled={isExporting} value={customHeight} onChange={(event) => setCustomHeight(event.target.value)} /></label><button type="button" className="secondary" disabled={isExporting || !customValid} onClick={() => { onAspectRatioChange({ kind: "custom", width, height }); setIsAspectOpen(false); }}>Apply</button>{!customValid ? <span className="field-error" role="alert">Use positive values with a ratio from 1:10 through 10:1.</span> : null}</div> : null}
     </div> : null}
     {isMoreOpen ? <div className="compact-more"><button type="button" className="secondary" disabled={isExporting} onClick={onReset}>Reset</button></div> : null}
+    {onNext ? <button type="button" className="compact-next" disabled={isExporting} onClick={onNext}>Next</button> : null}
   </section>;
 }
 

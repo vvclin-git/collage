@@ -18,13 +18,16 @@ describe("workflow presentation", () => {
   });
 
   it("renders photo-first layout choices and delegates actions", () => {
+    const onImport = vi.fn();
     const onRemovePhoto = vi.fn();
     const onSelectHorizontal = vi.fn();
-    render(<ChooseLayoutScreen photos={[photo]} onImport={vi.fn()} onRemovePhoto={onRemovePhoto} onClear={vi.fn()}
+    render(<ChooseLayoutScreen photos={[photo]} onImport={onImport} onRemovePhoto={onRemovePhoto} onClear={vi.fn()}
       onSelectHorizontal={onSelectHorizontal} onSelectVertical={vi.fn()} onSelectManual={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: "Add photos" }));
     fireEvent.click(screen.getByRole("button", { name: /Horizontal/ }));
     fireEvent.click(screen.getByRole("button", { name: "Remove sunset.jpg" }));
     expect(onSelectHorizontal).toHaveBeenCalledOnce();
+    expect(onImport).toHaveBeenCalledOnce();
     expect(onRemovePhoto).toHaveBeenCalledWith("photo-1");
     expect(screen.queryByLabelText(/^Gap/)).not.toBeInTheDocument();
   });

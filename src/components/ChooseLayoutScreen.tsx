@@ -18,10 +18,7 @@ export function ChooseLayoutScreen({ photos, onImport, onRemovePhoto, onClear, o
     <section className="workflow-screen choose-layout-screen" aria-label="Choose a collage layout">
       <EmptyCanvasPreview message="Choose a layout to build your collage" />
       <section className="workflow-panel workflow-photo-tray" aria-labelledby="choose-photo-heading">
-        <div className="workflow-panel-header">
-          <h2 id="choose-photo-heading">Photo Tray</h2>
-          <button type="button" className="secondary" onClick={onImport}>Add photos</button>
-        </div>
+        <h2 id="choose-photo-heading">Photo Tray</h2>
         <div className="workflow-photo-list">
           {photos.map((photo) => <figure key={photo.id} className="workflow-photo">
             <img src={photo.src} alt={photo.fileName} />
@@ -29,6 +26,10 @@ export function ChooseLayoutScreen({ photos, onImport, onRemovePhoto, onClear, o
             <button type="button" className="tray-remove" onClick={() => onRemovePhoto(photo.id)} aria-label={`Remove ${photo.fileName}`}>×</button>
           </figure>)}
           {noPhotos ? <p>No photos imported.</p> : null}
+          <button type="button" className="tray-add workflow-tray-add" onClick={onImport}>
+            <span aria-hidden="true">+</span>
+            <span className="visually-hidden">Add photos</span>
+          </button>
         </div>
       </section>
       <section className="workflow-panel" aria-labelledby="layout-options-heading">

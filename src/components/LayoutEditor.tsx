@@ -1,7 +1,7 @@
 import { Layer, Rect, Stage } from "react-konva";
 import type Konva from "konva";
 import { useMemo, useRef } from "react";
-import { LayoutControls } from "./Toolbar";
+import { CompactLayoutControls } from "./Toolbar";
 import { useElementSize } from "../hooks/useElementSize";
 import {
   fitAspectRect,
@@ -115,7 +115,7 @@ export function LayoutEditor() {
   };
 
   return (
-    <div className="workspace">
+    <div className="workspace manual-layout-workspace">
       <section className="canvas-shell">
         <div ref={ref} className="stage-host" data-testid="layout-stage">
           <Stage
@@ -194,7 +194,7 @@ export function LayoutEditor() {
         </div>
       </section>
 
-      <LayoutControls
+      <CompactLayoutControls
         aspectRatio={layout.aspectRatio}
         canDeleteSplit={Boolean(selectedSplitId)}
         selectedCellCount={selectedLayoutLeafIds.length}
@@ -220,7 +220,7 @@ export function LayoutEditor() {
         }}
         onNext={finishManualLayout}
       />
-      <button type="button" className="secondary" onClick={cancelManualLayout}>
+      <button type="button" className="secondary manual-layout-back" onClick={cancelManualLayout}>
         Back
       </button>
     </div>

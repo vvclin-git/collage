@@ -3,7 +3,7 @@ import "@testing-library/jest-dom/vitest";
 import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import type { AspectRatio } from "../types";
-import { CollageControls, LayoutControls } from "./Toolbar";
+import { CollageControls, CompactLayoutControls, LayoutControls } from "./Toolbar";
 
 function AspectHarness() {
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>({ kind: "preset", value: "1:1" });
@@ -74,6 +74,18 @@ describe("Toolbar controls", () => {
     fireEvent.click(screen.getByRole("button", { name: "Equalize Heights" }));
     expect(onEqualize).toHaveBeenNthCalledWith(1, "width");
     expect(onEqualize).toHaveBeenNthCalledWith(2, "height");
+  });
+
+  it("reveals compact Adjust Layout actions only when they apply", () => {
+    const props = { aspectRatio: { kind: "preset", value: "1:1" } as AspectRatio,
+      onAspectRatioChange: vi.fn(), onDeleteSplit: vi.fn(), onEqualize: vi.fn(), onReset: vi.fn() };
+    const { rerender } = render(<CompactLayoutControls {...props} canDeleteSplit={false} selectedCellCount={0} />);
+    expect(screen.queryByRole("button", { name: "Delete Line" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Equalize Width" })).not.toBeInTheDocument();
+    rerender(<CompactLayoutControls {...props} canDeleteSplit selectedCellCount={2} />);
+    expect(screen.getByRole("button", { name: "Delete Line" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Equalize Width" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Equalize Height" })).toBeInTheDocument();
   });
 
   it("disables fine-tune mutations while an export is running", () => {
